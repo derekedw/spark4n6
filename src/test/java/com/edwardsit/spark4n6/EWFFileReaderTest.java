@@ -53,12 +53,12 @@ public class EWFFileReaderTest extends Configured {
             if (!sp.file.equals(priorFile) && sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
                 if (priorFile != null) {
                     priorEnd = sp.chunkIndex;
-                    // log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + priorEnd);
+                    log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + priorEnd);
                 }
                 priorFile = sp.file;
                 priorStart = sp.chunkIndex;
             }
         }
-        // log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + size / 64 / 512);
+        log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + size / 64 / 512);
     }
 }

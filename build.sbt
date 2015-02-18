@@ -1,33 +1,16 @@
-//
-// http://spark.apache.org/docs/latest/quick-start.html#a-standalone-app-in-scala
-//
-name         := "spark4n6"
-organization := "com.edwardsit"
-version      := "1.0"
+name := """spark4n6"""
 
-// lazy val root = (project in file(".")).enablePlugins(PlayJava)
-
-releaseSettings
-
-scalariformSettings
+version := "1.0"
 
 scalaVersion := "2.11.1"
 
 libraryDependencies ++= Seq(
+  "org.apache.spark" % "spark-streaming_2.10" % "1.2.0",
   "org.apache.pig" % "pig" % "0.14.0",
   "org.apache.hadoop" % "hadoop-common" % "2.4.1",
   "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.4.1",
-  javaJdbc,
-  javaEbean,
-  cache,
-  javaWs
+  // Uncomment to use Akka
+  //"com.typesafe.akka" % "akka-actor_2.11" % "2.3.6",
+  "junit"             % "junit"           % "4.11"  % "test",
+  "com.novocode"      % "junit-interface" % "0.10"  % "test"
 )
-
-// initialCommands in console := """
-//   |import org.apache.spark._
-//   |import org.apache.spark.streaming._
-//   |import org.apache.spark.streaming.StreamingContext._
-//   |import org.apache.spark.streaming.dstream._
-//   |import akka.actor.{ActorSystem, Props}
-//   |import com.typesafe.config.ConfigFactory
-//   |""".stripMargin
