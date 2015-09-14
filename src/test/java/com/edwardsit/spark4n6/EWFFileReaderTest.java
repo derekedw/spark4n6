@@ -33,9 +33,7 @@ public class EWFFileReaderTest extends Configured {
     @Test
     public void testGetEWFSection() throws IOException {
         Configuration conf = new Configuration(false);
-        conf.set("fs.default.name", "file:///");
-
-        Path path = new Path("D:\\Users\\Derek\\Images\\500GB\\500GB-CDrive.E01");
+        Path path = new Path("hdfs://ip-10-170-29-139/user/hadoop/500GB-CDrive.E01");
         FileSystem fs = path.getFileSystem(conf);
 
         EWFFileReader reader = new EWFFileReader(fs,path);
@@ -53,12 +51,12 @@ public class EWFFileReaderTest extends Configured {
             if (!sp.file.equals(priorFile) && sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
                 if (priorFile != null) {
                     priorEnd = sp.chunkIndex;
-                    log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + priorEnd);
+                    // log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + priorEnd);
                 }
                 priorFile = sp.file;
                 priorStart = sp.chunkIndex;
             }
         }
-        log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + size / 64 / 512);
+        // log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + size / 64 / 512);
     }
 }
