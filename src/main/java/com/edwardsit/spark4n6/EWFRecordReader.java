@@ -1,5 +1,6 @@
 package com.edwardsit.spark4n6;
 
+import edu.nps.jlibewf.EWFFileReader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -18,10 +19,11 @@ import java.io.IOException;
 */
 public class EWFRecordReader extends RecordReader<LongWritable, BytesWritable> {
     private int len64KiB = 64 * 1024;
+    private EWFFileReader stream = null;
 
     public EWFRecordReader() { }
 
-    FSDataInputStream stream = null;
+    // FSDataInputStream stream = null;
     long start = 0L;
     long currentStart = 0L;
     long currentEnd = 0L;
@@ -38,7 +40,7 @@ public class EWFRecordReader extends RecordReader<LongWritable, BytesWritable> {
         final FileSystem fs = file.getFileSystem(conf);
         start = fileSplit.getStart();
         end  = start + fileSplit.getLength();
-        stream = fs.open(file);
+        stream = new EWFFileReader(file.getFileSystem(context.getConfiguration()), file);
     }
 
     @Override
@@ -47,16 +49,14 @@ public class EWFRecordReader extends RecordReader<LongWritable, BytesWritable> {
             return false;
         else if (notReadYet) {
             currentStart = start;
-            stream.seek(currentStart);
             notReadYet = false;
         } else {
             currentStart = currentEnd;
         }
         long bytesToRead = ((end - currentStart) > len64KiB) ? len64KiB : end - currentStart;
-        byte[] buf = new byte[(int) bytesToRead];
-        int bytesRead = stream.read(currentStart,buf,0,(int) bytesToRead);
-        currentValue.set(buf,0,bytesRead);
-        currentEnd = currentStart + bytesRead;
+        byte[] buf = stream.readImageBytes(currentStart, (int) bytesToRead);
+        currentValue.set(buf,0,buf.length);
+        currentEnd = currentStart + buf.length;
         return currentEnd < end;
     }
 
