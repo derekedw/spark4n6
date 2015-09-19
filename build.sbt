@@ -7,6 +7,7 @@ scalaVersion := "2.10.4"
 libraryDependencies ++= Seq(
   "org.apache.spark"  %% "spark-core"     % "1.4.1",
   "org.apache.pig"    % "pig"             % "0.14.0",
+  "org.apache.pig"    % "piggybank"       % "0.14.0",
   "org.apache.hadoop" % "hadoop-common"   % "2.6.0",
   "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.6.0",
   // Uncomment to use Akka
