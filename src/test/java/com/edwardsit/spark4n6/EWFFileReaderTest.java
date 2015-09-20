@@ -6,9 +6,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
+import org.apache.log4j.*;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -32,6 +30,8 @@ public class EWFFileReaderTest extends Configured {
 
     @Test
     public void testGetEWFSection() throws IOException {
+        log.setLevel(Level.DEBUG);
+        Logger.getLogger("com.edwardsit.spark4n6").addAppender(new RollingFileAppender(new PatternLayout(), "debug.log"));
         Configuration conf = new Configuration(false);
         Path path = new Path("../macwd.E01");
         FileSystem fs = path.getFileSystem(conf);
@@ -45,18 +45,20 @@ public class EWFFileReaderTest extends Configured {
         long priorStart = 0L;
         long priorEnd = 0L;
         Path priorFile = null;
+        log.debug("File\t\tChunkIndex\t\tSectionType\t\tFileOffset\t\tSectionSize");
         while (it.hasNext()) {
             sp = it.next();
             assertNotNull(sp);
+            log.debug(sp.file+"\t\t"+sp.chunkIndex+"\t\t"+sp.sectionType+"\t\t"+sp.fileOffset+"\t\t"+sp.sectionSize);
             if (!sp.file.equals(priorFile) && sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
                 if (priorFile != null) {
                     priorEnd = sp.chunkIndex;
-                    // log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + priorEnd);
+                    // log.debug(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + priorEnd);
                 }
                 priorFile = sp.file;
                 priorStart = sp.chunkIndex;
             }
         }
-        // log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + size / 64 / 512);
+        // log.debug(priorFile + " Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + size / 64 / 512);
     }
 }

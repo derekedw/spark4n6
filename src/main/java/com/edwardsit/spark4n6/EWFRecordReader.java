@@ -11,6 +11,7 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileRecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 
@@ -18,6 +19,7 @@ import java.io.IOException;
 * Created by Derek on 9/22/2014.
 */
 public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, BytesWritable> {
+    private static Logger log =Logger.getLogger(EWFRecordReader.class);
     private int len64KiB = 64 * 1024;
     private EWFFileReader stream = null;
 
@@ -54,6 +56,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
             currentStart = currentEnd;
         }
         long bytesToRead = ((end - currentStart) > len64KiB) ? len64KiB : end - currentStart;
+        log.debug("stream.readImageBytes(" + currentStart + ", (int) " + bytesToRead +");");
         byte[] buf = stream.readImageBytes(currentStart, (int) bytesToRead);
         currentValue.set(buf,0,buf.length);
         currentEnd = currentStart + buf.length;
