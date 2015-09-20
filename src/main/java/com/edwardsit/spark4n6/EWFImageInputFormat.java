@@ -2,6 +2,8 @@ package com.edwardsit.spark4n6;
 
 import edu.nps.jlibewf.EWFFileReader;
 import edu.nps.jlibewf.EWFSection;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.LongWritable;
@@ -21,6 +23,7 @@ import java.util.List;
 * Created by Derek on 9/22/2014.
 */
 public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWritable> {
+    private static Logger log = Logger.getLogger(EWFImageInputFormat.class);
     private EWFFileReader ewf = null;
     private Path filename = null;
 
@@ -44,6 +47,7 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
 
     @Override
     public List<InputSplit> getSplits(JobContext job) throws IOException {
+	log.setLevel(Level.DEBUG);
         List<InputSplit> splits = new ArrayList<InputSplit>();
         if (ewf == null) {
             return super.getSplits(job);
@@ -61,14 +65,14 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
                 if (!sp.file.equals(priorFile) && sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
                     if (priorFile != null) {
                         priorEnd = sp.chunkIndex;
-                        // log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + priorEnd);
+                        log.debug(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + priorEnd);
                     }
                     priorFile = sp.file;
                     priorStart = sp.chunkIndex;
                     splits.add(new FileSplit(filename,priorStart,priorEnd - priorStart, null));
                 }
             }
-            // log.info(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + size / 64 / 512);
+            log.debug(priorFile + "Split#" + (numSplits * priorEnd * 64 * 512 / size) + ", " + priorStart + " to " + size / 64 / 512);
         }
         return splits;
     }
