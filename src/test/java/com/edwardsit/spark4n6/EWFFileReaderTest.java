@@ -33,7 +33,7 @@ public class EWFFileReaderTest extends Configured {
     @Test
     public void testGetEWFSection() throws IOException {
         Configuration conf = new Configuration(false);
-        Path path = new Path("macwd.E01");
+        Path path = new Path("../macwd.E01");
         FileSystem fs = path.getFileSystem(conf);
 
         EWFFileReader reader = new EWFFileReader(fs,path);
