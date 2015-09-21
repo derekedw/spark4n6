@@ -23,6 +23,7 @@ import java.util.List;
 * Created by Derek on 9/22/2014.
 */
 public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWritable> {
+    private static Logger log = Logger.getLogger(EWFImageInputFormat.class);
     private EWFFileReader ewf = null;
     private Path filename = null;
 
@@ -35,7 +36,7 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
 
     @Override
     protected boolean isSplitable(JobContext context, Path filename) {
-        filename = filename;
+        this.filename = filename;
         try {
             ewf = new EWFFileReader(filename.getFileSystem(context.getConfiguration()), filename);
             return true;
@@ -46,11 +47,13 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
 
     @Override
     public List<InputSplit> getSplits(JobContext job) throws IOException {
-	    List<InputSplit> splits = new ArrayList<InputSplit>();
+        List<InputSplit> splits = new ArrayList<InputSplit>();
+	log.setLevel(Level.DEBUG);
         if (ewf == null) {
             return super.getSplits(job);
         } else {
             long size = ewf.getImageSize();
+		log.debug("size = " + size);
             ArrayList<EWFSection.SectionPrefix> sections = ewf.getSectionPrefixArray();
             Iterator<EWFSection.SectionPrefix> it = sections.iterator();
             EWFSection.SectionPrefix sp;
@@ -63,12 +66,15 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
                 if (!sp.file.equals(priorFile) && sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
                     if (priorFile != null) {
                         priorEnd = sp.chunkIndex;
+                    log.debug("splits.add(new FileSplit(" + filename + "," + priorStart + "," + (priorEnd - priorStart) + ", null));");
+                    splits.add(new FileSplit(filename,priorStart,priorEnd - priorStart, null));
                     }
                     priorFile = sp.file;
                     priorStart = sp.chunkIndex;
-                    splits.add(new FileSplit(filename,priorStart,priorEnd - priorStart, null));
                 }
             }
+                    log.debug("splits.add(new FileSplit(" + filename + "," + priorStart + "," + (priorEnd - priorStart) + ", null));");
+                    splits.add(new FileSplit(filename,priorStart,priorEnd - priorStart, null));
         }
         return splits;
     }
