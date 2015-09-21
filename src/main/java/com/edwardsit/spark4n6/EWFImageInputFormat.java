@@ -63,18 +63,12 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
             Path priorFile = null;
             while (it.hasNext()) {
                 sp = it.next();
-                if (!sp.file.equals(priorFile) && sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
-                    if (priorFile != null) {
-                        priorEnd = sp.chunkIndex;
-                    log.debug("splits.add(new FileSplit(" + filename + "," + priorStart + "," + (priorEnd - priorStart) + ", null));");
-                    splits.add(new FileSplit(filename,priorStart,priorEnd - priorStart, null));
-                    }
-                    priorFile = sp.file;
-                    priorStart = sp.chunkIndex;
+                if (sp.sectionType.equals(EWFSection.SectionType.TABLE2_TYPE)) {
+                    priorEnd = sp.chunkIndex;
                 }
             }
-                    log.debug("splits.add(new FileSplit(" + filename + "," + priorStart + "," + (priorEnd - priorStart) + ", null));");
-                    splits.add(new FileSplit(filename,priorStart,priorEnd - priorStart, null));
+            log.debug("splits.add(new FileSplit(" + filename + "," + priorStart + "," + ((priorEnd - priorStart) * 64 * 512) + ", null));");
+            splits.add(new FileSplit(filename,priorStart,((priorEnd - priorStart) * 64 * 512), null));
         }
         return splits;
     }

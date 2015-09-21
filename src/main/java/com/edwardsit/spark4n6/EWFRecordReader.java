@@ -47,7 +47,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
 
     @Override
     public boolean nextKeyValue() throws IOException, InterruptedException {
-        if (atEOF || currentEnd >= end)
+        if (atEOF)
             return false;
         else if (notReadYet) {
             currentStart = start;
@@ -60,7 +60,8 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
         byte[] buf = stream.readImageBytes(currentStart, (int) bytesToRead);
         currentValue.set(buf,0,buf.length);
         currentEnd = currentStart + buf.length;
-        return currentEnd < end;
+        atEOF = (currentEnd >= end);
+        return true;
     }
 
     @Override
