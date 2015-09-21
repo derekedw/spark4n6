@@ -57,18 +57,27 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
             ArrayList<EWFSection.SectionPrefix> sections = ewf.getSectionPrefixArray();
             Iterator<EWFSection.SectionPrefix> it = sections.iterator();
             EWFSection.SectionPrefix sp;
-            long numSplits = job.getMaxMapAttempts();
+            long numSplits = job.getConfiguration().getInt(job.NUM_MAPS, -1);
+            assert numSplits >= 0 : "Couldn't find " + job.NUM_MAPS;
             long priorStart = 0L;
             long priorEnd = 0L;
             Path priorFile = null;
             while (it.hasNext()) {
                 sp = it.next();
                 if (sp.sectionType.equals(EWFSection.SectionType.TABLE2_TYPE)) {
+                    if ((priorFile != null) && !sp.file.equals(priorFile)
+                            && ((float) ((64.0 * 512.0 * numSplits * (priorEnd - priorStart)) / size) >= 1.0))
+                    {
+                        log.debug("splits.add(new FileSplit(" + filename + "," + (priorStart * 64L * 512L) + "," + ((priorEnd - priorStart) * 64L * 512L) + ", null));");
+                        splits.add(new FileSplit(filename, (priorStart * 64L * 512L), ((priorEnd - priorStart) * 64L * 512L), null));
+                        priorStart = priorEnd;
+                    }
                     priorEnd = sp.chunkIndex;
+                    priorFile = sp.file;
                 }
             }
-            log.debug("splits.add(new FileSplit(" + filename + "," + priorStart + "," + ((priorEnd - priorStart) * 64 * 512) + ", null));");
-            splits.add(new FileSplit(filename,priorStart,((priorEnd - priorStart) * 64 * 512), null));
+            log.debug("splits.add(new FileSplit(" + filename + "," + (priorStart * 64L * 512L) + "," + ((priorEnd - priorStart) * 64L * 512L) + ", null));");
+            splits.add(new FileSplit(filename,(priorStart * 64L * 512L),((priorEnd - priorStart) * 64L * 512L), null));
         }
         return splits;
     }
