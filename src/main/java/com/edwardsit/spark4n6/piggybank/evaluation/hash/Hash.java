@@ -50,7 +50,8 @@ import org.apache.pig.data.*;
  * @author Derek derekedw@yahoo.com
  */
 public class Hash extends EvalFunc<String>
-{
+{	MessageDigest md = null;
+
 	/**
 	 * @see org.apache.pig.EvalFunc#exec(org.apache.pig.data.Tuple)
 	 * The first argument in scripts must be a string, the 
@@ -62,8 +63,9 @@ public class Hash extends EvalFunc<String>
 		String algo = null;
 		DataBag bag = null;
 		Tuple t = null;
-		MessageDigest md = null;
-		if (input.get(0) instanceof String) {
+		if (algo == null || bag == null)
+			throw new IOException(this.getClass().getName() + "(algorithm: chararray, dataField: bag)");
+		if (md == null && input.get(0) instanceof String) {
 			try {
 				algo = (String) input.get(0);
 				md = MessageDigest.getInstance(algo);
@@ -71,16 +73,15 @@ public class Hash extends EvalFunc<String>
 				throw new IOException("No such algorithm '" + algo + "'", e);
 			}
 		}
-		if (input.get(1) instanceof DataBag)
+		if (input.get(1) instanceof DataBag) {
 			bag = (DataBag)input.get(1);
-		if (algo == null || bag == null)
-			throw new IOException(this.getClass().getName() + "(algorithm: chararray, dataField: bag)");
-		for (Iterator<Tuple> it = bag.iterator(); it.hasNext();) {
-			t = it.next();
-			if (t != null && t.size() > 0 && t.get(0) != null && 
-					(t.get(0)) instanceof DataByteArray) 
-			{
-				md.update(((DataByteArray) t.get(0)).get());
+			for (Iterator<Tuple> it = bag.iterator(); it.hasNext();) {
+				t = it.next();
+				if (t != null && t.size() > 0 && t.get(0) != null && 
+						(t.get(0)) instanceof DataByteArray) 
+				{
+					md.update(((DataByteArray) t.get(0)).get());
+				}
 			}
 		}
 		return Hex.encodeHexString(md.digest());
