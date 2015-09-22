@@ -63,8 +63,6 @@ public class Hash extends EvalFunc<String>
 		String algo = null;
 		DataBag bag = null;
 		Tuple t = null;
-		if (algo == null || bag == null)
-			throw new IOException(this.getClass().getName() + "(algorithm: chararray, dataField: bag)");
 		if (md == null && input.get(0) instanceof String) {
 			try {
 				algo = (String) input.get(0);
@@ -75,6 +73,8 @@ public class Hash extends EvalFunc<String>
 		}
 		if (input.get(1) instanceof DataBag) {
 			bag = (DataBag)input.get(1);
+			if (algo == null || bag == null)
+				throw new IOException(this.getClass().getName() + "(algorithm: chararray, dataField: bag)");
 			for (Iterator<Tuple> it = bag.iterator(); it.hasNext();) {
 				t = it.next();
 				if (t != null && t.size() > 0 && t.get(0) != null && 
