@@ -57,7 +57,7 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
             Iterator<EWFSection.SectionPrefix> it = sections.iterator();
             EWFSection.SectionPrefix sp;
             long numSplits = job.getConfiguration().getInt(job.NUM_MAPS, -1);
-            /* For testing long numSplits = 10; */
+            // For testing long numSplits = 10;
             assert numSplits >= 0 : "Couldn't find " + job.NUM_MAPS;
             long priorStart = 0L;
             long chunkCount = 0L;
