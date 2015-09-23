@@ -45,11 +45,11 @@ public class EWFFileReaderTest extends Configured {
         long priorStart = 0L;
         long priorEnd = 0L;
         Path priorFile = null;
-        log.debug("File\t\tChunkIndex\t\tSectionType\t\tFileOffset\t\tSectionSize");
+        log.debug("File\t\tChunkIndex\t\tSectionType\t\tChunkCount\t\tSectionSize");
         while (it.hasNext()) {
             sp = it.next();
             assertNotNull(sp);
-            log.debug(sp.file+"\t\t"+sp.chunkIndex+"\t\t"+sp.sectionType+"\t\t"+sp.fileOffset+"\t\t"+sp.sectionSize);
+            log.debug(sp.file+"\t\t"+sp.chunkIndex+"\t\t"+sp.sectionType+"\t\t"+sp.chunkCount+"\t\t"+sp.sectionSize);
             if (!sp.file.equals(priorFile) && sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
                 if (priorFile != null) {
                     priorEnd = sp.chunkIndex;
