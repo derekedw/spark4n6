@@ -2,6 +2,8 @@ package com.edwardsit.spark4n6;
 
 import edu.nps.jlibewf.EWFFileReader;
 import edu.nps.jlibewf.EWFSection;
+import edu.nps.jlibewf.EWFSegmentFileReader;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.log4j.*;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
@@ -25,6 +27,9 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
     private static Logger log = Logger.getLogger(EWFImageInputFormat.class);
     private EWFFileReader ewf = null;
     private Path filename = null;
+    private FileSystem fs = null;
+    private long chunkSize = new EWFSegmentFileReader(fs).DEFAULT_CHUNK_SIZE;
+    private static long nChunksPerSplit = -1L;
 
     public EWFImageInputFormat() { }
 
@@ -37,7 +42,8 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
     protected boolean isSplitable(JobContext context, Path filename) {
         this.filename = filename;
         try {
-            ewf = new EWFFileReader(filename.getFileSystem(context.getConfiguration()), filename);
+            this.fs = this.filename.getFileSystem(context.getConfiguration());
+            ewf = new EWFFileReader(fs, filename);
             return true;
         } catch (IOException ioe) {
             return false;
@@ -51,39 +57,39 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
         if (ewf == null) {
             return super.getSplits(job);
         } else {
-            long imageSize = ewf.getImageSize();
-	    	log.debug("size = " + imageSize);
+            log.debug("imageSize = " + ewf.getImageSize() / chunkSize +", chunksPerSplit = " + getChunksPerSplit(job));
             ArrayList<EWFSection.SectionPrefix> sections = ewf.getSectionPrefixArray();
             Iterator<EWFSection.SectionPrefix> it = sections.iterator();
             EWFSection.SectionPrefix sp;
-            long numSplits = job.getConfiguration().getInt(job.NUM_MAPS, -1);
-            /* For testing long numSplits = 10; */
-            assert numSplits >= 0 : "Couldn't find " + job.NUM_MAPS;
             long priorStart = 0L;
             long chunkCount = 0L;
-            Path priorFile = null;
             while (it.hasNext()) {
                 sp = it.next();
                 if (sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
                     chunkCount += sp.chunkCount;
-                    if (    (priorFile != null)
-                            && !sp.file.equals(priorFile)
-                            && isItLargeEnoughForASplit(chunkCount, numSplits, imageSize))
-                    {
-                        log.debug("splits.add(new FileSplit(" + filename + "," + (priorStart * 64L * 512L) + "," + (chunkCount * 64L * 512L) + ", null));");
-                        splits.add(new FileSplit(filename, (priorStart * 64L * 512L), (chunkCount * 64L * 512L), null));
-                        priorStart += chunkCount;
-                        chunkCount = 0L;
+                    while (chunkCount >= getChunksPerSplit(job)) {
+                        log.debug("splits.add(new FileSplit(" + filename + "," + (priorStart * chunkSize) + "," + (getChunksPerSplit(job) * chunkSize) + ", null));");
+                        splits.add(new FileSplit(filename, (priorStart * chunkSize), (getChunksPerSplit(job) * chunkSize), null));
+                        priorStart += getChunksPerSplit(job);
+                        chunkCount -= getChunksPerSplit(job);
                     }
-                    priorFile = sp.file;
                 }
             }
-            log.debug("splits.add(new FileSplit(" + filename + "," + (priorStart * 64L * 512L) + "," + (chunkCount * 64L * 512L) + ", null));");
-            splits.add(new FileSplit(filename,(priorStart * 64L * 512L),(chunkCount * 64L * 512L), null));
+            log.debug("splits.add(new FileSplit(" + filename + "," + (priorStart * chunkSize) + "," + (chunkCount * chunkSize) + ", null));");
+            splits.add(new FileSplit(filename,(priorStart * chunkSize),(chunkCount * chunkSize), null));
         }
         return splits;
     }
-    boolean isItLargeEnoughForASplit(long chunkCount, long numSplits, long imageSize) {
-        return (((float) ((64.0 * 512.0 * numSplits * chunkCount) / imageSize)) >= 1.0);
+    protected long getChunksPerSplit(JobContext job) throws IOException {
+        long maxSize = 0L;
+        long blockSize = 0L;
+        long splitSize = 0L;
+        if (nChunksPerSplit == -1L) {
+            maxSize = getMaxSplitSize(job);
+            blockSize = fs.getFileStatus(filename).getBlockSize();
+            splitSize = computeSplitSize(blockSize, chunkSize, maxSize);
+            nChunksPerSplit = (splitSize/chunkSize) - 1L;
+        }
+        return nChunksPerSplit;
     }
 }
