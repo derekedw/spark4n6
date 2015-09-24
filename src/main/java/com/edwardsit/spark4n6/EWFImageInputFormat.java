@@ -61,12 +61,6 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
             ArrayList<EWFSection.SectionPrefix> sections = ewf.getSectionPrefixArray();
             Iterator<EWFSection.SectionPrefix> it = sections.iterator();
             EWFSection.SectionPrefix sp;
-<<<<<<< HEAD
-=======
-            long numSplits = job.getConfiguration().getInt(job.NUM_MAPS, -1);
-            // For testing long numSplits = 10;
-            assert numSplits >= 0 : "Couldn't find " + job.NUM_MAPS;
->>>>>>> origin/master
             long priorStart = 0L;
             long chunkCount = 0L;
             while (it.hasNext()) {
