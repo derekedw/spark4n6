@@ -20,7 +20,7 @@ import java.io.IOException;
 */
 public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, BytesWritable> {
     private static Logger log =Logger.getLogger(EWFRecordReader.class);
-    private int len64KiB = 64 * 1024;
+    private long len32MiB = 32L * 1024L * 1024L;
     private EWFFileReader stream = null;
 
     public EWFRecordReader() { }
@@ -55,7 +55,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
         } else {
             currentStart = currentEnd;
         }
-        long bytesToRead = ((end - currentStart) > len64KiB) ? len64KiB : end - currentStart;
+        long bytesToRead = ((end - currentStart) > len32MiB) ? len32MiB : end - currentStart;
         log.debug("stream.readImageBytes(" + currentStart + ", (int) " + bytesToRead +");");
         byte[] buf = stream.readImageBytes(currentStart, (int) bytesToRead);
         currentValue.set(buf,0,buf.length);
