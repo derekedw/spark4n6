@@ -20,15 +20,11 @@ import java.io.IOException;
 */
 public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, BytesWritable> {
     private static Logger log =Logger.getLogger(EWFRecordReader.class);
-    private long len32MiB = 32L * 1024L * 1024L;
     private EWFFileReader stream = null;
 
     public EWFRecordReader() { }
 
-    // FSDataInputStream stream = null;
     long start = 0L;
-    long currentStart = 0L;
-    long currentEnd = 0L;
     long end = 0L;
     boolean notReadYet = true;
     boolean atEOF = false;
@@ -49,24 +45,19 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
     public boolean nextKeyValue() throws IOException, InterruptedException {
         if (atEOF)
             return false;
-        else if (notReadYet) {
-            currentStart = start;
+        if (notReadYet)
             notReadYet = false;
-        } else {
-            currentStart = currentEnd;
-        }
-        long bytesToRead = ((end - currentStart) > len32MiB) ? len32MiB : end - currentStart;
-        log.debug("stream.readImageBytes(" + currentStart + ", (int) " + bytesToRead +");");
-        byte[] buf = stream.readImageBytes(currentStart, (int) bytesToRead);
+        long bytesToRead = (end - start);
+        log.debug("stream.readImageBytes(" + start + ", (int) " + bytesToRead +");");
+        byte[] buf = stream.readImageBytes(start, (int) bytesToRead);
         currentValue.set(buf,0,buf.length);
-        currentEnd = currentStart + buf.length;
-        atEOF = (currentEnd >= end);
+        atEOF = ((start + buf.length) >= end);
         return true;
     }
 
     @Override
     public LongWritable getCurrentKey() {
-        return new LongWritable(currentStart);
+        return new LongWritable(start);
     }
 
     @Override
@@ -76,10 +67,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
 
     @Override
     public float getProgress() throws IOException {
-        if (start == end)
-            return 0.0f;
-        else
-            return (float) (currentEnd - start) / (end - start);
+        return 0.0f;
     }
 
     @Override
