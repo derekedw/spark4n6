@@ -3,9 +3,8 @@ package com.edwardsit.spark4n6;
 import edu.nps.jlibewf.EWFFileReader;
 import edu.nps.jlibewf.EWFSection;
 import edu.nps.jlibewf.EWFSegmentFileReader;
-import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.*;
 import org.apache.log4j.*;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -60,23 +59,45 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
             log.debug("imageSize = " + ewf.getImageSize() / chunkSize +", chunksPerSplit = " + getChunksPerSplit(job));
             ArrayList<EWFSection.SectionPrefix> sections = ewf.getSectionPrefixArray();
             Iterator<EWFSection.SectionPrefix> it = sections.iterator();
+            BlockLocation[] blkLocations = { new BlockLocation() };
             EWFSection.SectionPrefix sp;
             long priorStart = 0L;
             long chunkCount = 0L;
+            FileStatus status;
+            int blkIndex = 0;
+            StringBuffer hosts = new StringBuffer();
             while (it.hasNext()) {
                 sp = it.next();
                 if (sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
                     chunkCount += sp.chunkCount;
                     while (chunkCount >= getChunksPerSplit(job)) {
-                        log.debug("splits.add(new FileSplit(" + filename + "," + (priorStart * chunkSize) + "," + (getChunksPerSplit(job) * chunkSize) + ", null));");
-                        splits.add(new FileSplit(filename, (priorStart * chunkSize), (getChunksPerSplit(job) * chunkSize), null));
+                        log.debug("splits.add(makeSplit(" + filename + "," + (priorStart * chunkSize) + "," +
+                                (getChunksPerSplit(job) * chunkSize) + ", " +
+                                hosts.toString() + "));");
+                        splits.add(makeSplit(filename, (priorStart * chunkSize), (getChunksPerSplit(job) * chunkSize),
+                                blkLocations[blkIndex].getHosts(),blkLocations[blkIndex].getCachedHosts()));
                         priorStart += getChunksPerSplit(job);
                         chunkCount -= getChunksPerSplit(job);
                     }
                 }
+                status = fs.getFileStatus(sp.file);
+                if (status instanceof LocatedFileStatus) {
+                    blkLocations = ((LocatedFileStatus) status).getBlockLocations();
+                } else {
+                    blkLocations = fs.getFileBlockLocations(sp.file, sp.fileOffset, sp.sectionSize);
+                }
+                blkIndex = this.getBlockIndex(blkLocations,sp.fileOffset);
+                hosts.setLength(0);
+                for (String host : blkLocations[blkIndex].getHosts()) { hosts.append(host); }
+                hosts.append(",");
+                for (String host : blkLocations[blkIndex].getCachedHosts()) { hosts.append(host); }
+                log.debug(sp.file.getName() + "," + sp.fileOffset + "," + sp.sectionSize + ", is on " + hosts);
+
             }
-            log.debug("splits.add(new FileSplit(" + filename + "," + (priorStart * chunkSize) + "," + (chunkCount * chunkSize) + ", null));");
-            splits.add(new FileSplit(filename,(priorStart * chunkSize),(chunkCount * chunkSize), null));
+            log.debug("splits.add(makeSplit(" + filename + "," + (priorStart * chunkSize) + "," + (chunkCount * chunkSize) + ", " +
+                    hosts.toString() + "));");
+            splits.add(makeSplit(filename, (priorStart * chunkSize),(chunkCount * chunkSize),
+                    blkLocations[blkIndex].getHosts(),blkLocations[blkIndex].getCachedHosts()));
         }
         return splits;
     }
