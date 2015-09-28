@@ -60,20 +60,21 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
             ArrayList<EWFSection.SectionPrefix> sections = ewf.getSectionPrefixArray();
             Iterator<EWFSection.SectionPrefix> it = sections.iterator();
             BlockLocation[] blkLocations = { new BlockLocation() };
-            EWFSection.SectionPrefix sp;
+            EWFSection.SectionPrefix sp, priorSP = null;
             long priorStart = 0L;
             long chunkCount = 0L;
             FileStatus status;
             int blkIndex = 0;
-            StringBuffer hosts = new StringBuffer();
+            String hosts = "";
             while (it.hasNext()) {
                 sp = it.next();
                 if (sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
                     chunkCount += sp.chunkCount;
                     while (chunkCount >= getChunksPerSplit(job)) {
+                        blkIndex = findBlockIndex(blkLocations,priorSP);
+                        hosts = listHosts(blkLocations, priorSP, blkIndex);
                         log.debug("splits.add(makeSplit(" + filename + "," + (priorStart * chunkSize) + "," +
-                                (getChunksPerSplit(job) * chunkSize) + ", " +
-                                hosts.toString() + "));");
+                                (getChunksPerSplit(job) * chunkSize) + "," + hosts + "));");
                         splits.add(makeSplit(filename, (priorStart * chunkSize), (getChunksPerSplit(job) * chunkSize),
                                 blkLocations[blkIndex].getHosts(),blkLocations[blkIndex].getCachedHosts()));
                         priorStart += getChunksPerSplit(job);
@@ -86,20 +87,29 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
                 } else {
                     blkLocations = fs.getFileBlockLocations(sp.file, sp.fileOffset, sp.sectionSize);
                 }
-                blkIndex = this.getBlockIndex(blkLocations,sp.fileOffset);
-                hosts.setLength(0);
-                for (String host : blkLocations[blkIndex].getHosts()) { hosts.append(host); }
-                hosts.append(",");
-                for (String host : blkLocations[blkIndex].getCachedHosts()) { hosts.append(host); }
-                log.debug(sp.file.getName() + "," + sp.fileOffset + "," + sp.sectionSize + ", is on " + hosts);
-
+                priorSP = sp;
             }
-            log.debug("splits.add(makeSplit(" + filename + "," + (priorStart * chunkSize) + "," + (chunkCount * chunkSize) + ", " +
-                    hosts.toString() + "));");
+            log.debug("splits.add(makeSplit(" + filename + "," + (priorStart * chunkSize) + "," +
+                    (chunkCount * chunkSize)+ "," + hosts + "));");
             splits.add(makeSplit(filename, (priorStart * chunkSize),(chunkCount * chunkSize),
                     blkLocations[blkIndex].getHosts(),blkLocations[blkIndex].getCachedHosts()));
         }
         return splits;
+    }
+    protected String listHosts(BlockLocation[] blkLocations,EWFSection.SectionPrefix sp, int blkIndex) throws IOException {
+        StringBuffer hosts = new StringBuffer();
+        hosts.append("[");
+        for (String host : blkLocations[blkIndex].getHosts()) { hosts.append(host).append(" "); }
+        hosts.append("],[");
+        for (String host : blkLocations[blkIndex].getCachedHosts()) { hosts.append(host).append(" "); }
+        hosts.append("]");
+        log.debug(sp.file.getName() + "," + sp.fileOffset + "," + sp.sectionSize + ", is on " + hosts);
+        return hosts.toString();
+    }
+    protected int findBlockIndex(BlockLocation[] blkLocations,EWFSection.SectionPrefix sp) throws IOException {
+        int blkIndex = 0;
+        blkIndex = this.getBlockIndex(blkLocations,sp.fileOffset);
+        return blkIndex;
     }
     protected long getChunksPerSplit(JobContext job) throws IOException {
         long maxSize = 0L;
