@@ -59,11 +59,11 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
             currentStart = currentEnd;
         }
         long bytesToRead = ((end - currentStart) > (getChunksPerSplit() * chunkSize)) ? (getChunksPerSplit() * chunkSize) : (end - currentStart);
-        log.debug("stream.readImageBytes(" + currentStart + ", (int) " + bytesToRead + ");");
         byte[] buf = stream.readImageBytes(currentStart, (int) bytesToRead);
+        log.debug("stream.readImageBytes(" + currentStart + ", (int) " + bytesToRead + ") = " + buf.length + ";");
         currentValue.set(buf,0,buf.length);
         currentEnd = currentStart + buf.length;
-        return currentEnd < end;
+        return currentEnd <= end;
     }
 
     @Override
@@ -73,7 +73,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
 
     @Override
     public BytesWritable getCurrentValue() {
-        return currentValue;
+        return new BytesWritable(currentValue.copyBytes());
     }
 
     @Override
