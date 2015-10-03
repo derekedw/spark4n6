@@ -10,18 +10,19 @@ import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.JobContext;
-import org.apache.hadoop.mapreduce.lib.input.SequenceFileRecordReader;
+import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.log4j.Logger;
+import org.apache.log4j.Level;
 
 import java.io.IOException;
 
 /**
 * Created by Derek on 9/22/2014.
 */
-public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, BytesWritable> {
-    private static Logger log =Logger.getLogger(EWFRecordReader.class);
+public class EWFRecordReader extends RecordReader<LongWritable, BytesWritable> {
+    private static Logger log = Logger.getLogger(EWFRecordReader.class);
     private static long nChunksPerSplit = -1L;
     private long chunkSize = 0L;
     private EWFFileReader stream = null;
@@ -46,6 +47,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
         chunkSize = new EWFSegmentFileReader(fs).DEFAULT_CHUNK_SIZE;
         long blockSize = fs.getFileStatus(file).getBlockSize();
         nChunksPerSplit = (blockSize/chunkSize) - 1L;
+	log.setLevel(Level.DEBUG);
     }
 
     @Override
