@@ -94,7 +94,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
     protected long getChunksPerSplit() throws IOException {
         if (nChunksPerSplit == -1L) {
             long hdfsBlockSize = fs.getFileStatus(file).getBlockSize();
-            nChunksPerSplit = (hdfsBlockSize/chunkSize/8) - 1L;
+            nChunksPerSplit = (hdfsBlockSize/chunkSize/128) - 1L;
         }
         return nChunksPerSplit;
     }
