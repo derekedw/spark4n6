@@ -24,9 +24,6 @@ import java.util.List;
 */
 public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWritable> {
     private static Logger log = Logger.getLogger(EWFImageInputFormat.class);
-    private EWFFileReader ewf = null;
-    private Path filename = null;
-    private FileSystem fs = null;
 
     public EWFImageInputFormat() { }
 
@@ -37,64 +34,32 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
 
     @Override
     protected boolean isSplitable(JobContext context, Path filename) {
-        this.filename = filename;
-        try {
-            this.fs = this.filename.getFileSystem(context.getConfiguration());
-            ewf = new EWFFileReader(fs, filename);
-            return false;
-        } catch (IOException ioe) {
-            return false;
-        }
+        return false;
     }
 
     @Override
     public List<InputSplit> getSplits(JobContext job) throws IOException {
         log.setLevel(Level.DEBUG);
         List<InputSplit> splits = new ArrayList<InputSplit>();
-        FileStatus status;
-        BlockLocation[] blkLocations = { new BlockLocation() };
-        if (ewf == null) {
-            return super.getSplits(job);
-        } else {
-            status = fs.getFileStatus(filename);
-            if (status instanceof LocatedFileStatus) {
-                blkLocations = ((LocatedFileStatus) status).getBlockLocations();
-            } else {
-                blkLocations = fs.getFileBlockLocations(filename, 0L, 512);
-            }
-            log.debug("splits.add(makeSplit(" + filename + ", 0L, " + ewf.getImageSize() + ", " + listHosts(blkLocations) + ");");
-            splits.add(makeSplit(filename, 0L, ewf.getImageSize(), blkLocations[0].getHosts(), blkLocations[0].getCachedHosts()));
-        }
-            /* ArrayList<EWFSection.SectionPrefix> sections = ewf.getSectionPrefixArray();
-            Iterator<EWFSection.SectionPrefix> it = sections.iterator();
-            EWFSection.SectionPrefix sp, priorSP = null;
-            long priorStart = 0L;
-            long chunkCount = 0L;
-            int blkIndex = 0;
-            String hosts = "";
-            while (it.hasNext()) {
-                sp = it.next();
-                if (sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
-                    chunkCount += sp.chunkCount;
-                    while (chunkCount >= getChunksPerSplit(job)) {
-                        blkIndex = findBlockIndex(blkLocations,priorSP);
-                        hosts = listHosts(blkLocations, priorSP, blkIndex);
-                        log.debug("splits.add(makeSplit(" + filename + "," + (priorStart * chunkSize) + "," +
-                                (getChunksPerSplit(job) * chunkSize) + "," + hosts + "));");
-                        splits.add(makeSplit(filename, (priorStart * chunkSize), (getChunksPerSplit(job) * chunkSize),
-                                blkLocations[blkIndex].getHosts(),blkLocations[blkIndex].getCachedHosts()));
-                        priorStart += getChunksPerSplit(job);
-                        chunkCount -= getChunksPerSplit(job);
-                    }
+        List<FileStatus> files = listStatus(job);
+        BlockLocation[] blkLocations = null;
+        Path path = null;
+        FileSystem fs = null;
+        EWFFileReader ewf = null;
+        for (FileStatus file: files) {
+            path = file.getPath();
+            fs = path.getFileSystem(job.getConfiguration());
+            if (path.getName().endsWith(".E01")) {
+                if (file instanceof LocatedFileStatus) {
+                    blkLocations = ((LocatedFileStatus) file).getBlockLocations();
+                } else {
+                    blkLocations = fs.getFileBlockLocations(path, 0L, 512);
                 }
-
-                priorSP = sp;
+                ewf = new EWFFileReader(fs, path);
+                log.debug("splits.add(makeSplit(" + path + ", 0L, " + ewf.getImageSize() + ", " + listHosts(blkLocations) + ");");
+                splits.add(makeSplit(path, 0L, ewf.getImageSize(), blkLocations[0].getHosts(), blkLocations[0].getCachedHosts()));
             }
-            log.debug("splits.add(makeSplit(" + filename + "," + (priorStart * chunkSize) + "," +
-                    (chunkCount * chunkSize)+ "," + hosts + "));");
-            splits.add(makeSplit(filename, (priorStart * chunkSize),(chunkCount * chunkSize),
-                    blkLocations[blkIndex].getHosts(),blkLocations[blkIndex].getCachedHosts()));
-        }*/
+        }
         return splits;
     }
     protected String listHosts(BlockLocation[] blkLocations) throws IOException {
