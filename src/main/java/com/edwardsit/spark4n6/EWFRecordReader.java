@@ -96,7 +96,8 @@ public class EWFRecordReader extends RecordReader<LongWritable, BytesWritable> {
         SparkConf sparkConf = new SparkConf();
         if (nChunksPerSplit == -1L) {
             // Use the smaller of Spark's blocksize or the HDFS filesystem's block size
-            long sparkBlockSize = (sparkConf.contains("spark.broadcast.blockSize") ? sparkConf.getSizeAsBytes("spark.broadcast.blockSize") : Long.MAX_VALUE);
+            // long sparkBlockSize = sparkConf.getSizeAsBytes("spark.broadcast.blockSize", "134217728");
+            long sparkBlockSize = sparkConf.getSizeAsBytes("spark.broadcast.blockSize", "1048576");
             long hdfsBlockSize = fs.getFileStatus(file).getBlockSize();
             nChunksPerSplit = (Math.min(sparkBlockSize,hdfsBlockSize)/chunkSize) - 1L;
         }
