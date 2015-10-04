@@ -15,6 +15,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
+import org.apache.spark.SparkConf;
 
 import java.io.IOException;
 
@@ -34,20 +35,20 @@ public class EWFRecordReader extends RecordReader<LongWritable, BytesWritable> {
     boolean notReadYet = true;
     boolean atEOF = false;
     BytesWritable currentValue = new BytesWritable();
+    FileSystem fs = null;
+    Path file = null;
 
     @Override
     public void initialize(InputSplit split, TaskAttemptContext context) throws IOException, InterruptedException {
         FileSplit fileSplit = (FileSplit) split;
         Configuration conf = context.getConfiguration();
-        final Path file = fileSplit.getPath();
-        final FileSystem fs = file.getFileSystem(conf);
+        file = fileSplit.getPath();
         start = fileSplit.getStart();
         end  = start + fileSplit.getLength();
         stream = new EWFFileReader(file.getFileSystem(context.getConfiguration()), file);
+        fs = file.getFileSystem(conf);
         chunkSize = new EWFSegmentFileReader(fs).DEFAULT_CHUNK_SIZE;
-        long blockSize = fs.getFileStatus(file).getBlockSize();
-        nChunksPerSplit = (blockSize/chunkSize) - 1L;
-	log.setLevel(Level.DEBUG);
+        log.setLevel(Level.DEBUG);
     }
 
     @Override
@@ -92,8 +93,12 @@ public class EWFRecordReader extends RecordReader<LongWritable, BytesWritable> {
             stream.close();
     }
     protected long getChunksPerSplit() throws IOException {
+        SparkConf sparkConf = new SparkConf();
         if (nChunksPerSplit == -1L) {
-            // TODO throw exception for uninitialized state
+            // Use the smaller of Spark's blocksize or the HDFS filesystem's block size
+            long sparkBlockSize = (sparkConf.contains("spark.broadcast.blockSize") ? sparkConf.getSizeAsBytes("spark.broadcast.blockSize") : Long.MAX_VALUE);
+            long hdfsBlockSize = fs.getFileStatus(file).getBlockSize();
+            nChunksPerSplit = (Math.min(sparkBlockSize,hdfsBlockSize)/chunkSize) - 1L;
         }
         return nChunksPerSplit;
     }
