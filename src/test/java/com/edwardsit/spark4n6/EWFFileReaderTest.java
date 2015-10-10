@@ -33,8 +33,8 @@ public class EWFFileReaderTest extends Configured {
         log.setLevel(Level.DEBUG);
         Logger.getLogger("com.edwardsit.spark4n6").addAppender(new RollingFileAppender(new PatternLayout(), "debug.log"));
         Configuration conf = new Configuration(false);
-        // Path path = new Path("../macwd.E01");
-        Path path = new Path("D:\\Users\\Derek\\Images\\500GB\\500GB-CDrive.E01");
+        Path path = new Path("../macwd.E01");
+        // Path path = new Path("D:\\Users\\Derek\\Images\\500GB\\500GB-CDrive.E01");
         FileSystem fs = path.getFileSystem(conf);
 
         EWFFileReader reader = new EWFFileReader(fs,path);

@@ -73,8 +73,8 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
                             blkLocations = fs.getFileBlockLocations(priorFileStatus, priorOffset, (sp.chunkCount * chunkSize));
                         }
                         blkIndex = getBlockIndex(blkLocations, priorOffset);
-                        log.debug("splits.add(makeSplit(" + path + ", " + (priorStart * chunkSize) + ", " + (sp.chunkCount * chunkSize) + ", " + listHosts(blkLocations) + ");");
-                        splits.add(makeSplit(path, (priorStart * chunkSize), (sp.chunkCount * chunkSize), blkLocations[0].getHosts(), blkLocations[0].getCachedHosts()));
+                        log.debug("splits.add(makeSplit(" + path + ", " + (priorStart * chunkSize) + ", " + (sp.chunkCount * chunkSize) + ", " + listHosts(blkLocations,blkIndex) + ");");
+                        splits.add(makeSplit(path, (priorStart * chunkSize), (sp.chunkCount * chunkSize), blkLocations[blkIndex].getHosts(), blkLocations[blkIndex].getCachedHosts()));
                         priorStart += sp.chunkCount;
                     }
                     priorFile = sp.file;
@@ -84,18 +84,13 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
         }
         return splits;
     }
-    protected String listHosts(BlockLocation[] blkLocations) throws IOException {
+    protected String listHosts(BlockLocation[] blkLocations,int blkIndex) throws IOException {
         StringBuffer hosts = new StringBuffer();
         hosts.append("[");
-        for (String host : blkLocations[0].getHosts()) { hosts.append(host).append(" "); }
+        for (String host : blkLocations[blkIndex].getHosts()) { hosts.append(host).append(" "); }
         hosts.append("],[");
-        for (String host : blkLocations[0].getCachedHosts()) { hosts.append(host).append(" "); }
+        for (String host : blkLocations[blkIndex].getCachedHosts()) { hosts.append(host).append(" "); }
         hosts.append("]");
         return hosts.toString();
-    }
-    protected int findBlockIndex(BlockLocation[] blkLocations,EWFSection.SectionPrefix sp) throws IOException {
-        int blkIndex = 0;
-        blkIndex = this.getBlockIndex(blkLocations,sp.fileOffset);
-        return blkIndex;
     }
 }
