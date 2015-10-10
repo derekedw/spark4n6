@@ -24,6 +24,7 @@ import java.util.List;
 */
 public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWritable> {
     private static Logger log = Logger.getLogger(EWFImageInputFormat.class);
+    private long chunkSize = 0L;
 
     public EWFImageInputFormat() { }
 
@@ -52,7 +53,7 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
         Path priorFile = null;
         long priorOffset = 0L;
         FileStatus priorFileStatus = null;
-        long chunkSize = new EWFSegmentFileReader(fs).DEFAULT_CHUNK_SIZE;
+        chunkSize = new EWFSegmentFileReader(fs).DEFAULT_CHUNK_SIZE;
         long priorStart = 0L;
         int blkIndex = 0;
         for (FileStatus file: files) {
@@ -67,15 +68,23 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
                     sp = it.next();
                     if (sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
                         priorFileStatus = fs.getFileStatus(priorFile);
-                        if (priorFileStatus instanceof LocatedFileStatus) {
-                            blkLocations = ((LocatedFileStatus) priorFileStatus).getBlockLocations();
-                        } else {
-                            blkLocations = fs.getFileBlockLocations(priorFileStatus, priorOffset, (sp.chunkCount * chunkSize));
+                        for (long i = sp.chunkCount; i > 0L; i = i - getChunksPerSplit(priorFileStatus)) {
+                            if (priorFileStatus instanceof LocatedFileStatus) {
+                                blkLocations = ((LocatedFileStatus) priorFileStatus).getBlockLocations();
+                            } else {
+                                blkLocations = fs.getFileBlockLocations(priorFileStatus, priorOffset, (getChunksPerSplit(priorFileStatus) * chunkSize));
+                            }
+                            blkIndex = getBlockIndex(blkLocations, priorOffset);
+                            if (i > getChunksPerSplit(priorFileStatus)) {
+                                log.debug("splits.add(makeSplit(" + priorFile + ", " + (priorStart * chunkSize) + ", " + (getChunksPerSplit(priorFileStatus) * chunkSize) + ", " + listHosts(blkLocations, blkIndex) + ");");
+                                splits.add(makeSplit(priorFile, (priorStart * chunkSize), (getChunksPerSplit(priorFileStatus) * chunkSize), blkLocations[blkIndex].getHosts(), blkLocations[blkIndex].getCachedHosts()));
+                                priorStart += getChunksPerSplit(priorFileStatus);
+                            } else {
+                                log.debug("splits.add(makeSplit(" + priorFile + ", " + (priorStart * chunkSize) + ", " + (i * chunkSize) + ", " + listHosts(blkLocations, blkIndex) + ");");
+                                splits.add(makeSplit(priorFile, (priorStart * chunkSize), (i * chunkSize), blkLocations[blkIndex].getHosts(), blkLocations[blkIndex].getCachedHosts()));
+                                priorStart += i;
+                            }
                         }
-                        blkIndex = getBlockIndex(blkLocations, priorOffset);
-                        log.debug("splits.add(makeSplit(" + priorFile + ", " + (priorStart * chunkSize) + ", " + (sp.chunkCount * chunkSize) + ", " + listHosts(blkLocations,blkIndex) + ");");
-                        splits.add(makeSplit(priorFile, (priorStart * chunkSize), (sp.chunkCount * chunkSize), blkLocations[blkIndex].getHosts(), blkLocations[blkIndex].getCachedHosts()));
-                        priorStart += sp.chunkCount;
                     }
                     priorFile = sp.file;
                     priorOffset = sp.fileOffset;
@@ -92,5 +101,8 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
         for (String host : blkLocations[blkIndex].getCachedHosts()) { hosts.append(host).append(" "); }
         hosts.append("]");
         return hosts.toString();
+    }
+    protected long getChunksPerSplit(FileStatus file) {
+        return file.getBlockSize() / chunkSize / 2;
     }
 }
