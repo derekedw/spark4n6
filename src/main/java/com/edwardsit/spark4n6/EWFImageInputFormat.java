@@ -34,7 +34,7 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
 
     @Override
     protected boolean isSplitable(JobContext context, Path filename) {
-        return false;
+        return true;
     }
 
     @Override
@@ -46,18 +46,40 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
         Path path = null;
         FileSystem fs = null;
         EWFFileReader ewf = null;
+        ArrayList<EWFSection.SectionPrefix> sections = null;
+        Iterator<EWFSection.SectionPrefix> it = null;
+        EWFSection.SectionPrefix sp = null;
+        Path priorFile = null;
+        long priorOffset = 0L;
+        FileStatus priorFileStatus = null;
+        long chunkSize = new EWFSegmentFileReader(fs).DEFAULT_CHUNK_SIZE;
+        long priorStart = 0L;
+        int blkIndex = 0;
         for (FileStatus file: files) {
             path = file.getPath();
             fs = path.getFileSystem(job.getConfiguration());
             if (path.getName().endsWith(".E01")) {
-                if (file instanceof LocatedFileStatus) {
-                    blkLocations = ((LocatedFileStatus) file).getBlockLocations();
-                } else {
-                    blkLocations = fs.getFileBlockLocations(path, 0L, 512);
-                }
+
                 ewf = new EWFFileReader(fs, path);
-                log.debug("splits.add(makeSplit(" + path + ", 0L, " + ewf.getImageSize() + ", " + listHosts(blkLocations) + ");");
-                splits.add(makeSplit(path, 0L, ewf.getImageSize(), blkLocations[0].getHosts(), blkLocations[0].getCachedHosts()));
+                sections = ewf.getSectionPrefixArray();
+                it = sections.iterator();
+                while(it.hasNext()) {
+                    sp = it.next();
+                    if (sp.sectionType.equals(EWFSection.SectionType.TABLE_TYPE)) {
+                        priorFileStatus = fs.getFileStatus(priorFile);
+                        if (priorFileStatus instanceof LocatedFileStatus) {
+                            blkLocations = ((LocatedFileStatus) priorFileStatus).getBlockLocations();
+                        } else {
+                            blkLocations = fs.getFileBlockLocations(priorFileStatus, priorOffset, (sp.chunkCount * chunkSize));
+                        }
+                        blkIndex = getBlockIndex(blkLocations, priorOffset);
+                        log.debug("splits.add(makeSplit(" + path + ", " + (priorStart * chunkSize) + ", " + (sp.chunkCount * chunkSize) + ", " + listHosts(blkLocations) + ");");
+                        splits.add(makeSplit(path, (priorStart * chunkSize), (sp.chunkCount * chunkSize), blkLocations[0].getHosts(), blkLocations[0].getCachedHosts()));
+                        priorStart += sp.chunkCount;
+                    }
+                    priorFile = sp.file;
+                    priorOffset = sp.fileOffset;
+                }
             }
         }
         return splits;
