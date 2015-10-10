@@ -37,6 +37,11 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
     FileSystem fs = null;
     Path file = null;
 
+    protected Path getFirstFile() {
+        int length = file.getName().length();
+        Path parent = file.getParent();
+	return new Path(parent,file.getName().substring(0,length-4) + ".E01");
+    }
     @Override
     public void initialize(InputSplit split, TaskAttemptContext context) throws IOException, InterruptedException {
         FileSplit fileSplit = (FileSplit) split;
@@ -44,8 +49,8 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
         file = fileSplit.getPath();
         start = fileSplit.getStart();
         end  = start + fileSplit.getLength();
-        stream = new EWFFileReader(file.getFileSystem(context.getConfiguration()), file);
         fs = file.getFileSystem(conf);
+        stream = new EWFFileReader(fs,getFirstFile());
         chunkSize = new EWFSegmentFileReader(fs).DEFAULT_CHUNK_SIZE;
         log.setLevel(Level.DEBUG);
     }

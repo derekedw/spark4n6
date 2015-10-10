@@ -73,8 +73,8 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
                             blkLocations = fs.getFileBlockLocations(priorFileStatus, priorOffset, (sp.chunkCount * chunkSize));
                         }
                         blkIndex = getBlockIndex(blkLocations, priorOffset);
-                        log.debug("splits.add(makeSplit(" + path + ", " + (priorStart * chunkSize) + ", " + (sp.chunkCount * chunkSize) + ", " + listHosts(blkLocations,blkIndex) + ");");
-                        splits.add(makeSplit(path, (priorStart * chunkSize), (sp.chunkCount * chunkSize), blkLocations[blkIndex].getHosts(), blkLocations[blkIndex].getCachedHosts()));
+                        log.debug("splits.add(makeSplit(" + priorFile + ", " + (priorStart * chunkSize) + ", " + (sp.chunkCount * chunkSize) + ", " + listHosts(blkLocations,blkIndex) + ");");
+                        splits.add(makeSplit(priorFile, (priorStart * chunkSize), (sp.chunkCount * chunkSize), blkLocations[blkIndex].getHosts(), blkLocations[blkIndex].getCachedHosts()));
                         priorStart += sp.chunkCount;
                     }
                     priorFile = sp.file;
