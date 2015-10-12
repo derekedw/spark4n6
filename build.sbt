@@ -5,11 +5,19 @@ version := "1.0"
 scalaVersion := "2.10.4"
 
 libraryDependencies ++= Seq(
-  "org.apache.spark"  %% "spark-core"     % "1.4.1",
-  "org.apache.pig"    % "pig"             % "0.14.0",
-  "org.apache.pig"    % "piggybank"       % "0.14.0",
-  "org.apache.hadoop" % "hadoop-common"   % "2.6.0",
-  "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.6.0",
+  // Amazon EMR 3.10.0 has HBase
+  "org.apache.spark"  %% "spark-core"     % "1.3.1",
+  "org.apache.pig"    % "pig"             % "0.12.0",
+  "org.apache.pig"    % "piggybank"       % "0.12.0",
+  "org.apache.hadoop" % "hadoop-common"   % "2.4.0",
+  "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.4.0",
+  /* Amazon EMR 4.0.0 is missing HBase */
+  /* "org.apache.spark"  %% "spark-core"     % "1.4.1",
+   * "org.apache.pig"    % "pig"             % "0.14.0",
+   * "org.apache.pig"    % "piggybank"       % "0.14.0",
+   * "org.apache.hadoop" % "hadoop-common"   % "2.6.0",
+   * "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.6.0",
+   */
   // Uncomment to use Akka
   //"com.typesafe.akka" % "akka-actor_2.11" % "2.3.6",
   "junit"             % "junit"           % "4.11"  % "test",

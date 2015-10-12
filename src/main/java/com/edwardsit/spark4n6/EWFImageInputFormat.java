@@ -77,11 +77,11 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
                             blkIndex = getBlockIndex(blkLocations, priorOffset);
                             if (i > getChunksPerSplit(priorFileStatus)) {
                                 log.debug("splits.add(makeSplit(" + priorFile + ", " + (priorStart * chunkSize) + ", " + (getChunksPerSplit(priorFileStatus) * chunkSize) + ", " + listHosts(blkLocations, blkIndex) + ");");
-                                splits.add(makeSplit(priorFile, (priorStart * chunkSize), (getChunksPerSplit(priorFileStatus) * chunkSize), blkLocations[blkIndex].getHosts(), blkLocations[blkIndex].getCachedHosts()));
+                                splits.add(makeSplit(priorFile, (priorStart * chunkSize), (getChunksPerSplit(priorFileStatus) * chunkSize), blkLocations[blkIndex].getHosts()));
                                 priorStart += getChunksPerSplit(priorFileStatus);
                             } else {
                                 log.debug("splits.add(makeSplit(" + priorFile + ", " + (priorStart * chunkSize) + ", " + (i * chunkSize) + ", " + listHosts(blkLocations, blkIndex) + ");");
-                                splits.add(makeSplit(priorFile, (priorStart * chunkSize), (i * chunkSize), blkLocations[blkIndex].getHosts(), blkLocations[blkIndex].getCachedHosts()));
+                                splits.add(makeSplit(priorFile, (priorStart * chunkSize), (i * chunkSize), blkLocations[blkIndex].getHosts()));
                                 priorStart += i;
                             }
                         }
@@ -97,8 +97,6 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
         StringBuffer hosts = new StringBuffer();
         hosts.append("[");
         for (String host : blkLocations[blkIndex].getHosts()) { hosts.append(host).append(" "); }
-        hosts.append("],[");
-        for (String host : blkLocations[blkIndex].getCachedHosts()) { hosts.append(host).append(" "); }
         hosts.append("]");
         return hosts.toString();
     }
