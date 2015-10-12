@@ -7,6 +7,7 @@ scalaVersion := "2.10.4"
 libraryDependencies ++= Seq(
   // Amazon EMR 3.10.0 has HBase
   "org.apache.spark"  %% "spark-core"     % "1.3.1",
+  "org.apache.hbase"  % "hbase"           % "0.94.18",
   "org.apache.pig"    % "pig"             % "0.12.0",
   "org.apache.pig"    % "piggybank"       % "0.12.0",
   "org.apache.hadoop" % "hadoop-common"   % "2.4.0",
