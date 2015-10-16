@@ -6,12 +6,13 @@ scalaVersion := "2.10.4"
 
 libraryDependencies ++= Seq(
   // Amazon EMR 3.10.0 has HBase
-  "org.apache.spark"  %% "spark-core"     % "1.3.1",
-  "org.apache.hbase"  % "hbase"           % "0.94.18",
-  "org.apache.pig"    % "pig"             % "0.12.0",
-  "org.apache.pig"    % "piggybank"       % "0.12.0",
-  "org.apache.hadoop" % "hadoop-common"   % "2.4.0",
-  "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.4.0",
+  "com.amazonaws"     %  "aws-java-sdk-s3" % "1.10.26",
+  "org.apache.spark"  %% "spark-core"      % "1.3.1",
+  "org.apache.hbase"  %  "hbase"           % "0.94.18",
+  "org.apache.pig"    %  "pig"             % "0.12.0",
+  "org.apache.pig"    %  "piggybank"       % "0.12.0",
+  "org.apache.hadoop" %  "hadoop-common"   % "2.4.0",
+  "org.apache.hadoop" %  "hadoop-mapreduce-client-core" % "2.4.0",
   /* Amazon EMR 4.0.0 is missing HBase */
   /* "org.apache.spark"  %% "spark-core"     % "1.4.1",
    * "org.apache.pig"    % "pig"             % "0.14.0",

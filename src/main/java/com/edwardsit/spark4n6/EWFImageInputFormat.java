@@ -101,6 +101,6 @@ public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWrita
         return hosts.toString();
     }
     protected long getChunksPerSplit(FileStatus file) {
-        return file.getBlockSize() / chunkSize / 2;
+        return file.getBlockSize() / chunkSize;
     }
 }

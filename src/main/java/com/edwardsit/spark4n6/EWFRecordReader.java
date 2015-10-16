@@ -3,13 +3,11 @@ package com.edwardsit.spark4n6;
 import edu.nps.jlibewf.EWFFileReader;
 import edu.nps.jlibewf.EWFSegmentFileReader;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileRecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
@@ -65,7 +63,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
         } else {
             currentStart = currentEnd;
         }
-        long bytesToRead = ((end - currentStart) > (getChunksPerSplit() * chunkSize)) ? (getChunksPerSplit() * chunkSize) : (end - currentStart);
+        long bytesToRead = ((end - currentStart) > (getChunksPerBlock() * chunkSize)) ? (getChunksPerBlock() * chunkSize) : (end - currentStart);
         byte[] buf = stream.readImageBytes(currentStart, (int) bytesToRead);
         log.debug("stream.readImageBytes(" + currentStart + ", (int) " + bytesToRead + ") = " + buf.length + ";");
         currentValue.set(buf,0,buf.length);
@@ -96,7 +94,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
         if(stream != null)
             stream.close();
     }
-    protected long getChunksPerSplit() throws IOException {
+    protected long getChunksPerBlock() throws IOException {
         if (nChunksPerSplit == -1L) {
             long hdfsBlockSize = fs.getFileStatus(file).getBlockSize();
             nChunksPerSplit = (hdfsBlockSize/chunkSize/8) - 1L;

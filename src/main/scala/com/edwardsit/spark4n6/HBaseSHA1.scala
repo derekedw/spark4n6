@@ -13,38 +13,27 @@ import org.apache.spark.{SparkConf, SparkContext}
  */
 object HBaseSHA1 {
   def main(args: Array[String]) {
-    val sha1 = new HBaseSHA1(args(0))
+    val sha1 = new HBaseSHA1(EWFImage.canonicalNameOf(args(0)),EWFImage.rowKeysOf(args(0)),EWFImage.familyNameDefault)
     sha1.calculate
     println(args(0) + " = " + sha1.toHexString)
   }
-  val tableNameDefault: String = "images"
-  val familyNameDefault : String = "images"
 }
 
-class HBaseSHA1 (image: java.lang.String, tableName: String = HBaseSHA1.tableNameDefault, familyName : String = HBaseSHA1.familyNameDefault) {
+class HBaseSHA1 (tableName: String,rowKeys: Iterable[String],familyName: String) {
   val md = java.security.MessageDigest.getInstance("SHA1")
   var calculated = false
-  def this(image: String) { this(image,HBaseSHA1.tableNameDefault,HBaseSHA1.familyNameDefault) }
   def toHexString : String = {
     if (! calculated)
       calculate()
     Hex.encodeHexString(md.digest())
   }
   def calculate() {
-    val conf = HBaseConfiguration.create()
-    // Initialize hBase table if necessary
-    val admin = new HBaseAdmin(conf)
     val connection = HConnectionManager.createConnection(new Configuration)
-    if (!admin.isTableAvailable(tableName)) {
-      val tableDesc = new HTableDescriptor("test")
-      admin.createTable(tableDesc)
-      tableDesc.addFamily(new HColumnDescriptor(familyName.getBytes))
-    }
     val table = connection.getTable(tableName.getBytes)
-    val scan = new Scan(image.getBytes,new PrefixFilter(image.getBytes()))
-    scan.addFamily(familyName.getBytes)
-    val rs = table.getScanner(scan)
-    for (r : Result <- rs) {
+    for (key <- rowKeys) {
+      val get = new Get(key.getBytes())
+      get.addFamily(familyName.getBytes)
+      val r = table.get(get)
       val families = r.getNoVersionMap()
       for (columns <- families.values()) {
         for (data <- columns.values()) {
@@ -52,8 +41,7 @@ class HBaseSHA1 (image: java.lang.String, tableName: String = HBaseSHA1.tableNam
         }
       }
     }
-    rs.close()  // always close the ResultScanner!
-    admin.close()
+    table.close()
     calculated = true
   }
 }
