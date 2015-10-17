@@ -7,7 +7,6 @@ import java.security.MessageDigest
 import org.apache.commons.codec.binary.Hex
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.hbase.io.ImmutableBytesWritable
 import org.apache.hadoop.hbase.mapreduce.{TableOutputFormat}
 import org.apache.hadoop.hbase.{HColumnDescriptor, HTableDescriptor, HBaseConfiguration}
 import org.apache.hadoop.hbase.client.{Put, HConnectionManager, HBaseAdmin}
@@ -53,15 +52,9 @@ object EWFImage {
     if (!admin.isTableAvailable(tableNameDefault)) {
       val tableDesc = new HTableDescriptor(tableNameDefault)
       admin.createTable(tableDesc, Array(
-        Array[Byte](0x40,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-                    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-                    0x00,0x00,0x00,0x00),
-        Array[Byte](0x80.toByte,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-                    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-                    0x00,0x00,0x00,0x00),
-        Array[Byte](0xc0.toByte,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-                    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-                    0x00,0x00,0x00,0x00)
+	"4000000000000000000000000000000000000000".getBytes,
+	"8000000000000000000000000000000000000000".getBytes,
+	"c000000000000000000000000000000000000000".getBytes
       ))
       val imagePath = new Path("/")
       val fs = imagePath.getFileSystem(hConf)
@@ -101,7 +94,7 @@ class EWFImage(sc: SparkContext, image: String, tableName: String = EWFImage.tab
       val md = MessageDigest.getInstance("SHA1")
       val partitionBytes = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(gb).array()
       md.update(partitionBytes)
-      md.update(canonicalNameOf(filename).getBytes())
+      md.update(canonicalNameOf(filename).getBytes)
       val hash = Hex.encodeHexString(md.digest())
       // rowKeyTable + (rkCanonical -> hash)
       hash
@@ -119,13 +112,13 @@ class EWFImage(sc: SparkContext, image: String, tableName: String = EWFImage.tab
       val pathname = new String(pathBuf)
       val gb = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(index / 1024L / 1024L / 1024L).array()
       val md = MessageDigest.getInstance("SHA1")
-      md.update(pathname.getBytes())
+      md.update(pathname.getBytes)
       md.update(gb)
-      (md.digest(), EWFImage.familyNameDefault,index,b._2)
+      (md.digest,index,b._2)
     })
     val hbaseStore = hbasePrep.map(b => {
-      val columnBytes = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(b._3).array()
-      (b._1, new Put(b._1).add(b._2.getBytes, columnBytes, b._4))
+      val columnBytes = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(b._2).array()
+      (Hex.encodeHexString(b._1), new Put(b._1).add(EWFImage.familyNameDefault.getBytes, columnBytes, b._3))
     })
     hConf.setClass("mapreduce.outputformat.class",
       classOf[TableOutputFormat[Object]], classOf[OutputFormat[Object, Writable]])
