@@ -2,6 +2,7 @@ package com.edwardsit.spark4n6
 
 import java.net.URI
 import java.nio.ByteBuffer
+import java.nio.charset.Charset
 import java.security.MessageDigest
 import org.apache.commons.codec.binary.Hex
 import org.apache.hadoop.conf.Configuration
@@ -86,9 +87,14 @@ class EWFImage(sc: SparkContext, image: String, tableName: String = EWFImage.tab
     val path = new Path(filename)
     path.toUri.getRawPath
   }
-  def rowKey(filename: String,key: Long) : String = {
-    val gb = key / 1024L / 1024L / 1024L
-    val rkCanonical = canonicalNameOf(filename).concat(gb.toHexString)
+  /* def rowKey(key: Array[Byte]) : String = {
+    val keyBuf = ByteBuffer.wrap(key)
+    val index = keyBuf.getLong()
+    val pathBuf = new Array[Byte](keyBuf.remaining())
+    keyBuf.get(pathBuf)
+    val pathname = new String(pathBuf)
+    val gb = index / 1024L / 1024L / 1024L
+    val rkCanonical = pathname.concat(gb.toHexString)
     /* if (rowKeyTable contains(rkCanonical))
       rowKeyTable(rkCanonical)
     else { */
@@ -100,29 +106,31 @@ class EWFImage(sc: SparkContext, image: String, tableName: String = EWFImage.tab
       // rowKeyTable + (rkCanonical -> hash)
       hash
     // }
-  }
+  }*/
   def load {
     // delegate image reading and parsing to concrete image class
-    // using EWFRecordReader, parse verificationHashes
-    val rawBlocks = sc.newAPIHadoopFile[LongWritable, BytesWritable, EWFImageInputFormat](image)
-    val blocks = rawBlocks.map(b => (b._1.get, b._2.copyBytes)).persist(StorageLevel.MEMORY_AND_DISK_SER)
-    val hbasePrep = blocks.map(b => (rowKey(image,b._1),familyName,b._1,b._2))
+    val rawBlocks = sc.newAPIHadoopFile[BytesWritable, BytesWritable, EWFImageInputFormat](image)
+    val blocks = rawBlocks.map(b => (b._1.copyBytes(), b._2.copyBytes)).persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val hbasePrep = blocks.map(b => {
+      val keyBuf = ByteBuffer.wrap(b._1)
+      val index = keyBuf.getLong()
+      val pathBuf = new Array[Byte](keyBuf.remaining())
+      keyBuf.get(pathBuf)
+      val pathname = new String(pathBuf)
+      val gb = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(index / 1024L / 1024L / 1024L).array()
+      val md = MessageDigest.getInstance("SHA1")
+      md.update(pathname.getBytes())
+      md.update(gb)
+      (md.digest(), EWFImage.familyNameDefault,index,b._2)
+    })
     val hbaseStore = hbasePrep.map(b => {
       val columnBytes = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(b._3).array()
-      (b._1, new Put(Hex.decodeHex(b._1.toCharArray)).add(b._2.getBytes, columnBytes, b._4))
+      (b._1, new Put(b._1).add(b._2.getBytes, columnBytes, b._4))
     })
-    // using EWFRecordReader, parse verificationHashes
     hConf.setClass("mapreduce.outputformat.class",
       classOf[TableOutputFormat[Object]], classOf[OutputFormat[Object, Writable]])
     hConf.set(TableOutputFormat.OUTPUT_TABLE, tableName)
-    val blockTable = blocks.map(b =>
-      (rowKey(image,b._1),b._1,b._2)
-    )
-    val blockStore = blockTable.map(b => (new ImmutableBytesWritable(Hex.decodeHex(b._1.toCharArray)),{
-      val columnName = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(b._2).array()
-      new Put(Hex.decodeHex(b._1.toCharArray)).add(familyName.getBytes(),columnName,b._3)
-    }))
-    blockStore.foldByKey(null) ((p1,p2) => {
+    hbaseStore.foldByKey(null) ((p1,p2) => {
       if (p1 == null)
         p2
       else {

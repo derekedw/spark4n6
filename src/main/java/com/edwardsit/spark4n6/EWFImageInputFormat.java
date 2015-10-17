@@ -22,14 +22,14 @@ import java.util.List;
 /**
 * Created by Derek on 9/22/2014.
 */
-public class EWFImageInputFormat extends FileInputFormat<LongWritable,BytesWritable> {
+public class EWFImageInputFormat extends FileInputFormat<BytesWritable,BytesWritable> {
     private static Logger log = Logger.getLogger(EWFImageInputFormat.class);
     private long chunkSize = 0L;
 
     public EWFImageInputFormat() { }
 
     @Override
-    public RecordReader<LongWritable, BytesWritable> createRecordReader(InputSplit split, TaskAttemptContext context) throws IOException, InterruptedException {
+    public RecordReader<BytesWritable, BytesWritable> createRecordReader(InputSplit split, TaskAttemptContext context) throws IOException, InterruptedException {
         return new EWFRecordReader();
     }
 

@@ -15,11 +15,12 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
 * Created by Derek on 9/22/2014.
 */
-public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, BytesWritable> {
+public class EWFRecordReader extends SequenceFileRecordReader<BytesWritable, BytesWritable> {
     private static Logger log = Logger.getLogger(EWFRecordReader.class);
     private static long nChunksPerSplit = -1L;
     private long chunkSize = 0L;
@@ -31,6 +32,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
     long currentEnd = 0L;
     boolean notReadYet = true;
     boolean atEOF = false;
+    BytesWritable currentKey = new BytesWritable();
     BytesWritable currentValue = new BytesWritable();
     FileSystem fs = null;
     Path file = null;
@@ -64,16 +66,21 @@ public class EWFRecordReader extends SequenceFileRecordReader<LongWritable, Byte
             currentStart = currentEnd;
         }
         long bytesToRead = ((end - currentStart) > (getChunksPerBlock() * chunkSize)) ? (getChunksPerBlock() * chunkSize) : (end - currentStart);
-        byte[] buf = stream.readImageBytes(currentStart, (int) bytesToRead);
-        log.debug("stream.readImageBytes(" + currentStart + ", (int) " + bytesToRead + ") = " + buf.length + ";");
-        currentValue.set(buf,0,buf.length);
-        currentEnd = currentStart + buf.length;
+        byte[] valBuf = stream.readImageBytes(currentStart, (int) bytesToRead);
+        log.debug("stream.readImageBytes(" + currentStart + ", (int) " + bytesToRead + ") = " + valBuf.length + ";");
+        byte[] keyBuf = ByteBuffer.allocate(Long.SIZE + file.toUri().toASCIIString().getBytes().length)
+                .putLong(currentStart)
+                .put(file.toUri().toASCIIString().getBytes())
+                .array();
+        currentKey.set(keyBuf,0,keyBuf.length);
+        currentValue.set(valBuf, 0, valBuf.length);
+        currentEnd = currentStart + valBuf.length;
         return currentEnd <= end;
     }
 
     @Override
-    public LongWritable getCurrentKey() {
-        return new LongWritable(currentStart);
+    public BytesWritable getCurrentKey() {
+        return new BytesWritable(currentKey.copyBytes());
     }
 
     @Override
