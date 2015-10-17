@@ -13,7 +13,11 @@ import org.apache.spark.{SparkConf, SparkContext}
  */
 object HBaseSHA1 {
   def main(args: Array[String]) {
-    val sha1 = new HBaseSHA1(EWFImage.canonicalNameOf(args(0)),EWFImage.rowKeysOf(args(0)),EWFImage.familyNameDefault)
+    val conf = new SparkConf()
+    // conf.set("spark.executor.extraClassPath","/user/hadoop/spark4n6_2.10-1.0.jar")
+    val sc = new SparkContext("yarn-client","SHA1", conf)
+    val img = new EWFImage(sc,args(0))
+    val sha1 = new HBaseSHA1(img.canonicalNameOf(args(0)),EWFImage.rowKeysOf(args(0)),EWFImage.familyNameDefault)
     sha1.calculate
     println(args(0) + " = " + sha1.toHexString)
   }
