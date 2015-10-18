@@ -7,6 +7,7 @@ import java.security.MessageDigest
 import org.apache.commons.codec.binary.Hex
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable
 import org.apache.hadoop.hbase.mapreduce.{TableOutputFormat}
 import org.apache.hadoop.hbase.{HColumnDescriptor, HTableDescriptor, HBaseConfiguration}
 import org.apache.hadoop.hbase.client.{Put, HConnectionManager, HBaseAdmin}
@@ -114,26 +115,20 @@ class EWFImage(sc: SparkContext, image: String, tableName: String = EWFImage.tab
       val md = MessageDigest.getInstance("SHA1")
       md.update(pathname.getBytes)
       md.update(gb)
-      (md.digest,index,b._2)
+      (Hex.encodeHexString(md.digest),(index,b._2))
     })
-    val hbaseStore = hbasePrep.map(b => {
-      val columnBytes = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(b._2).array()
-      (Hex.encodeHexString(b._1), new Put(b._1).add(EWFImage.familyNameDefault.getBytes, columnBytes, b._3))
-    })
+    val hBbaseGroup = hbasePrep.groupByKey()
     hConf.setClass("mapreduce.outputformat.class",
       classOf[TableOutputFormat[Object]], classOf[OutputFormat[Object, Writable]])
     hConf.set(TableOutputFormat.OUTPUT_TABLE, tableName)
-    hbaseStore.foldByKey(null) ((p1,p2) => {
-      if (p1 == null)
-        p2
-      else {
-        for (familyData <- p2.getFamilyMap) {
-          for (kv <- familyData._2) {
-            p1.add(kv)
-          }
-        }
-        p1
+    hBbaseGroup.map(b => {
+      val put = new Put(b._1.getBytes)
+      for (column <- b._2) {
+        val col = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(column._1).array()
+        put.add(EWFImage.familyNameDefault.getBytes,col,column._2)
       }
+      (new ImmutableBytesWritable(b._1.getBytes()),put)
+
     }).saveAsNewAPIHadoopDataset(hConf)
   }
   /* def restore {
