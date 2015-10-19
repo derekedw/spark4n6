@@ -6,7 +6,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileRecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -22,7 +21,7 @@ import java.nio.ByteBuffer;
 */
 public class EWFRecordReader extends SequenceFileRecordReader<BytesWritable, BytesWritable> {
     private static Logger log = Logger.getLogger(EWFRecordReader.class);
-    private static long nChunksPerSplit = -1L;
+    private static long nChunksPerRecord = -1L;
     private long chunkSize = 0L;
     private EWFFileReader stream = null;
     public EWFRecordReader() { }
@@ -65,7 +64,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<BytesWritable, Byt
         } else {
             currentStart = currentEnd;
         }
-        long bytesToRead = ((end - currentStart) > (getChunksPerBlock() * chunkSize)) ? (getChunksPerBlock() * chunkSize) : (end - currentStart);
+        long bytesToRead = ((end - currentStart) > (getChunksPerRecord() * chunkSize)) ? (getChunksPerRecord() * chunkSize) : (end - currentStart);
         byte[] valBuf = stream.readImageBytes(currentStart, (int) bytesToRead);
         log.debug("stream.readImageBytes(" + currentStart + ", (int) " + bytesToRead + ") = " + valBuf.length + ";");
         byte[] keyBuf = ByteBuffer.allocate(Long.SIZE + file.toUri().toASCIIString().getBytes().length)
@@ -101,11 +100,12 @@ public class EWFRecordReader extends SequenceFileRecordReader<BytesWritable, Byt
         if(stream != null)
             stream.close();
     }
-    protected long getChunksPerBlock() throws IOException {
-        if (nChunksPerSplit == -1L) {
+    protected long getChunksPerRecord() throws IOException {
+        if (nChunksPerRecord == -1L) {
             long hdfsBlockSize = fs.getFileStatus(file).getBlockSize();
-            nChunksPerSplit = (hdfsBlockSize/chunkSize/8) - 1L;
+            // nChunksPerRecord = (hdfsBlockSize/chunkSize/8) - 1L;
+            nChunksPerRecord = 2L; // 64 KiB, the default block size for HBase
         }
-        return nChunksPerSplit;
+        return nChunksPerRecord;
     }
 }
