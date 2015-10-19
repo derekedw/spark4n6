@@ -4,7 +4,6 @@ import collection.JavaConversions._
 import org.apache.commons.codec.binary.Hex
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.client._
-import org.apache.hadoop.hbase.filter.PrefixFilter
 import org.apache.hadoop.hbase.{HColumnDescriptor, HBaseConfiguration, HTableDescriptor}
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -16,14 +15,14 @@ object HBaseSHA1 {
     val conf = new SparkConf()
     // conf.set("spark.executor.extraClassPath","/user/hadoop/spark4n6_2.10-1.0.jar")
     val sc = new SparkContext("yarn-client","SHA1", conf)
-    val img = new EWFImage(sc,args(0))
-    val sha1 = new HBaseSHA1(img.canonicalNameOf(args(0)),EWFImage.rowKeysOf(args(0)),EWFImage.familyNameDefault)
+    val img = new EWFImage(args(0))
+    val sha1 = new HBaseSHA1(img)
     sha1.calculate
     println(args(0) + " = " + sha1.toHexString)
   }
 }
 
-class HBaseSHA1 (tableName: String,rowKeys: Iterable[String],familyName: String) {
+class HBaseSHA1 (img: EWFImage) {
   val md = java.security.MessageDigest.getInstance("SHA1")
   var calculated = false
   def toHexString : String = {
@@ -32,20 +31,22 @@ class HBaseSHA1 (tableName: String,rowKeys: Iterable[String],familyName: String)
     Hex.encodeHexString(md.digest())
   }
   def calculate() {
+    val it = img.rowKeys
+    val conf = HBaseConfiguration.create()
+    // Initialize hBase table if necessary
     val connection = HConnectionManager.createConnection(new Configuration)
-    val table = connection.getTable(tableName.getBytes)
-    for (key <- rowKeys) {
-      val get = new Get(key.getBytes())
-      get.addFamily(familyName.getBytes)
-      val r = table.get(get)
-      val families = r.getNoVersionMap()
-      for (columns <- families.values()) {
-        for (data <- columns.values()) {
-          md.update(data)
-        }
+    val table = connection.getTable(EWFImage.tableNameDefault.getBytes)
+    for (row <- it) {
+      val get = new Get(row)
+      val scan = new Scan(row,row)
+      val rs = table.getScanner(scan)
+      for (result <- rs) {
+        for (col <- result.getFamilyMap(EWFImage.familyNameDefault.getBytes))
+          md.update(col._2)
       }
     }
-    table.close()
+    if (connection != null)
+      connection.close()
     calculated = true
   }
 }

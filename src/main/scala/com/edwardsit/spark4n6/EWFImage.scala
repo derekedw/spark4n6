@@ -10,7 +10,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable
 import org.apache.hadoop.hbase.mapreduce.{TableOutputFormat}
 import org.apache.hadoop.hbase.{HColumnDescriptor, HTableDescriptor, HBaseConfiguration}
-import org.apache.hadoop.hbase.client.{Put, HConnectionManager, HBaseAdmin}
+import org.apache.hadoop.hbase.client._
 import org.apache.hadoop.io.{Writable, BytesWritable, LongWritable}
 import org.apache.hadoop.mapreduce.{OutputFormat}
 import org.apache.spark.{SparkConf, SparkContext}
@@ -25,24 +25,39 @@ import collection.JavaConversions._
 object EWFImage {
   val tableNameDefault: String = "images"
   val familyNameDefault : String = "images"
-  val rowKeyTable = new immutable.TreeMap[String,String]
-  def rowKeysOf(s: String): Iterable[String] = {
-    rowKeyTable.filter(e => s.equals(e._1.substring(0,e._1.length-8))) values
-  }
-  def list(): Unit = {
-    /* for (rk <- rowKeyTable) {
-      println(rk._1 + " with row key " + rk._2)
-    } */
+  val rowKeyTableName: String = "row-keys"
+  val rowKeyTable = new immutable.TreeMap[String,immutable.TreeMap[Array[Byte],Array[Byte]]]
+  def list(tableName: String = EWFImage.rowKeyTableName, familyName : String = EWFImage.familyNameDefault) {
+    val conf = HBaseConfiguration.create()
+    // Initialize hBase table if necessary
+    val connection = HConnectionManager.createConnection(new Configuration)
+    val table = connection.getTable(tableName.getBytes)
+    val scan = new Scan()
+    scan.addFamily(familyName.getBytes)
+    val rs = table.getScanner(scan)
+    for (r <- rs) {
+      rowKeyTable + (new String(r.getRow) -> r.getFamilyMap(familyName.getBytes))
+    }
+    if (rs != null)
+      rs.close()
+    if (connection != null)
+      connection.close()
   }
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
     // conf.set("spark.executor.extraClassPath","/user/hadoop/spark4n6_2.10-1.0.jar")
-    val sc = new SparkContext("yarn-client","EWFImageLoad", conf)
+    val sc = new SparkContext("yarn-client", "EWFImageLoad", conf)
     createTableIfNecessary
-    if ("list".equals(args(0))) list()
+    if ("list".equals(args(0))) {
+      list()
+      for (image <- rowKeyTable) {
+        for (gb <- image._2)
+          printf(image._1 + ":" + gb._1 + " is under " + gb._2)
+      }
+    }
     else if ("load".equals(args{0})) {
-      val image = new EWFImage(sc, args(1))
-      image.load
+      val image = new EWFImage(args(1))
+      image.load(sc)
     }
   }
   def createTableIfNecessary() {
@@ -62,11 +77,16 @@ object EWFImage {
       val blockSize = fs.getFileStatus(imagePath).getBlockSize
       tableDesc.addFamily(new HColumnDescriptor(familyNameDefault.getBytes).setBlocksize(blockSize.toInt))
     }
+    if (!admin.isTableAvailable(rowKeyTableName)) {
+      val tableDesc2 = new HTableDescriptor(rowKeyTableName)
+      admin.createTable(tableDesc2)
+    }
+    if (connection != null)
+      connection.close()
   }
 }
 
-class EWFImage(sc: SparkContext, image: String, tableName: String = EWFImage.tableNameDefault, familyName : String = EWFImage.familyNameDefault, backupPath: Path = null, verificationHashes: Array[Array[Byte]] = null, metadata: URI = null) {
-  val hConf = HBaseConfiguration.create(sc.hadoopConfiguration)
+class EWFImage(image: String, backupPath: Path = null, verificationHashes: Array[Array[Byte]] = null, metadata: URI = null) {
   /* def verify() {
     if (verificationHashes == null) {
      throw new IllegalArgumentException ("No verification hashes specified");
@@ -77,31 +97,11 @@ class EWFImage(sc: SparkContext, image: String, tableName: String = EWFImage.tab
   }
   def backup {
   } */
-  def canonicalNameOf(filename: String): String = {
-    val path = new Path(filename)
-    path.toUri.getRawPath
+  def rowKeys: Iterator[Array[Byte]] = {
+    val item = EWFImage.rowKeyTable(image)
+    item.valuesIterator
   }
-  /* def rowKey(key: Array[Byte]) : String = {
-    val keyBuf = ByteBuffer.wrap(key)
-    val index = keyBuf.getLong()
-    val pathBuf = new Array[Byte](keyBuf.remaining())
-    keyBuf.get(pathBuf)
-    val pathname = new String(pathBuf)
-    val gb = index / 1024L / 1024L / 1024L
-    val rkCanonical = pathname.concat(gb.toHexString)
-    /* if (rowKeyTable contains(rkCanonical))
-      rowKeyTable(rkCanonical)
-    else { */
-      val md = MessageDigest.getInstance("SHA1")
-      val partitionBytes = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(gb).array()
-      md.update(partitionBytes)
-      md.update(canonicalNameOf(filename).getBytes)
-      val hash = Hex.encodeHexString(md.digest())
-      // rowKeyTable + (rkCanonical -> hash)
-      hash
-    // }
-  }*/
-  def load {
+  def load(sc: SparkContext, tableName: String = EWFImage.tableNameDefault, familyName : String = EWFImage.familyNameDefault): Unit = {
     // delegate image reading and parsing to concrete image class
     val rawBlocks = sc.newAPIHadoopFile[BytesWritable, BytesWritable, EWFImageInputFormat](image)
     val blocks = rawBlocks.map(b => (b._1.copyBytes(), b._2.copyBytes)).persist(StorageLevel.MEMORY_AND_DISK_SER)
@@ -111,12 +111,14 @@ class EWFImage(sc: SparkContext, image: String, tableName: String = EWFImage.tab
       val pathBuf = new Array[Byte](keyBuf.remaining())
       keyBuf.get(pathBuf)
       val pathname = new String(pathBuf,Charset.forName("US-ASCII"))
+      val path = new Path(pathname)
       val gb = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(index / 1024L / 1024L / 1024L).array()
       val md = MessageDigest.getInstance("SHA1")
       md.update(pathname.getBytes)
       md.update(gb)
-      (Hex.encodeHexString(md.digest),index,b._2)
+      (Hex.encodeHexString(md.digest),index,b._2,path,gb)
     })
+    val hConf = HBaseConfiguration.create(sc.hadoopConfiguration)
     hConf.setClass("mapreduce.outputformat.class",
       classOf[TableOutputFormat[Object]], classOf[OutputFormat[Object, Writable]])
     hConf.set(TableOutputFormat.OUTPUT_TABLE, tableName)
@@ -125,6 +127,14 @@ class EWFImage(sc: SparkContext, image: String, tableName: String = EWFImage.tab
       val put = new Put(b._1.getBytes).add(EWFImage.familyNameDefault.getBytes,index,b._3)
       (new ImmutableBytesWritable(b._1.getBytes),put)
     }).saveAsNewAPIHadoopDataset(hConf)
+    val hConf2 = HBaseConfiguration.create(sc.hadoopConfiguration)
+    hConf2.setClass("mapreduce.outputformat.class",
+      classOf[TableOutputFormat[Object]], classOf[OutputFormat[Object, Writable]])
+    hConf2.set(TableOutputFormat.OUTPUT_TABLE, EWFImage.rowKeyTableName)
+    hbasePrep.map(b => {
+      val put = new Put(b._4.getName.getBytes).add(EWFImage.familyNameDefault.getBytes,b._5,b._1.getBytes)
+      (new ImmutableBytesWritable(b._4.getName.getBytes),put)
+    }).saveAsNewAPIHadoopDataset(hConf2)
   }
   /* def restore {
 
