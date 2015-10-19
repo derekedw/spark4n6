@@ -67,18 +67,19 @@ object EWFImage {
     val connection = HConnectionManager.createConnection(hConf)
     if (!admin.isTableAvailable(tableNameDefault)) {
       val tableDesc = new HTableDescriptor(tableNameDefault)
+      val imagePath = new Path("/")
+      val fs = imagePath.getFileSystem(hConf)
+      val blockSize = fs.getFileStatus(imagePath).getBlockSize
+      tableDesc.addFamily(new HColumnDescriptor(familyNameDefault.getBytes).setBlocksize(blockSize.toInt))
       admin.createTable(tableDesc, Array(
 	"4000000000000000000000000000000000000000".getBytes,
 	"8000000000000000000000000000000000000000".getBytes,
 	"c000000000000000000000000000000000000000".getBytes
       ))
-      val imagePath = new Path("/")
-      val fs = imagePath.getFileSystem(hConf)
-      val blockSize = fs.getFileStatus(imagePath).getBlockSize
-      tableDesc.addFamily(new HColumnDescriptor(familyNameDefault.getBytes).setBlocksize(blockSize.toInt))
     }
     if (!admin.isTableAvailable(rowKeyTableName)) {
       val tableDesc2 = new HTableDescriptor(rowKeyTableName)
+      tableDesc2.addFamily(new HColumnDescriptor(familyNameDefault.getBytes))
       admin.createTable(tableDesc2)
     }
     if (connection != null)
@@ -122,6 +123,7 @@ class EWFImage(image: String, backupPath: Path = null, verificationHashes: Array
     hConf.setClass("mapreduce.outputformat.class",
       classOf[TableOutputFormat[Object]], classOf[OutputFormat[Object, Writable]])
     hConf.set(TableOutputFormat.OUTPUT_TABLE, tableName)
+    hConf.set("hbase.client.keyvalue.maxsize","0")
     hbasePrep.map(b => {
       val index = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(b._2).array()
       val put = new Put(b._1.getBytes).add(EWFImage.familyNameDefault.getBytes,index,b._3)
