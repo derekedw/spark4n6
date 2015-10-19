@@ -67,10 +67,8 @@ object EWFImage {
     val connection = HConnectionManager.createConnection(hConf)
     if (!admin.isTableAvailable(tableNameDefault)) {
       val tableDesc = new HTableDescriptor(tableNameDefault)
-      val imagePath = new Path("/")
-      val fs = imagePath.getFileSystem(hConf)
-      val blockSize = fs.getFileStatus(imagePath).getBlockSize
-      tableDesc.addFamily(new HColumnDescriptor(familyNameDefault.getBytes).setBlocksize(blockSize.toInt))
+      val fam = new HColumnDescriptor(familyNameDefault.getBytes)
+      tableDesc.addFamily(fam)
       admin.createTable(tableDesc, Array(
 	"4000000000000000000000000000000000000000".getBytes,
 	"8000000000000000000000000000000000000000".getBytes,
@@ -79,7 +77,8 @@ object EWFImage {
     }
     if (!admin.isTableAvailable(rowKeyTableName)) {
       val tableDesc2 = new HTableDescriptor(rowKeyTableName)
-      tableDesc2.addFamily(new HColumnDescriptor(familyNameDefault.getBytes))
+      val fam2 = new HColumnDescriptor(familyNameDefault.getBytes)
+      tableDesc2.addFamily(fam2)
       admin.createTable(tableDesc2)
     }
     if (connection != null)
