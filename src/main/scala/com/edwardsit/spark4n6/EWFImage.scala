@@ -84,6 +84,31 @@ object EWFImage {
     if (connection != null)
       connection.close()
   }
+  def toHBasePrep(b: Tuple2[Array[Byte], Array[Byte]]): Tuple5[String,Long,Array[Byte],Path,Array[Byte]] = {
+    val keyBuf = ByteBuffer.wrap(b._1)
+    val index = keyBuf.getLong
+    val pathBuf = new Array[Byte](keyBuf.remaining())
+    keyBuf.get(pathBuf)
+    val pathname = new String(pathBuf)
+    val path = new Path(pathname)
+    val gb = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(index / 1024L / 1024L / 1024L).array()
+    val md = MessageDigest.getInstance("SHA1")
+    md.update(pathname.getBytes)
+    md.update(gb)
+    (Hex.encodeHexString(md.digest),index,b._2,path,gb)
+  }
+  def toImageColumn(b: Tuple5[String,Long,Array[Byte],Path,Array[Byte]]): Tuple2[ImmutableBytesWritable,Put] = {
+    val index = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(b._2).array()
+    val put = new Put(b._1.getBytes).add(familyNameDefault.getBytes,index,b._3)
+    (new ImmutableBytesWritable(b._1.getBytes),put)
+  }
+  def toRowKeyTuple(b: Tuple5[String,Long,Array[Byte],Path,Array[Byte]]): Tuple3[String,Array[Byte],String] = {
+    (b._4.getName,b._5,b._1)
+  }
+  def toRowKeyColumn(b: Tuple3[String,Array[Byte],String]): Tuple2[ImmutableBytesWritable,Put] = {
+    val put = new Put(b._1.getBytes).add(familyNameDefault.getBytes,b._2,b._3.getBytes)
+    (new ImmutableBytesWritable(b._1.getBytes),put)
+  }
 }
 
 class EWFImage(image: String, backupPath: Path = null, verificationHashes: Array[Array[Byte]] = null, metadata: URI = null) {
@@ -105,37 +130,21 @@ class EWFImage(image: String, backupPath: Path = null, verificationHashes: Array
     // delegate image reading and parsing to concrete image class
     val rawBlocks = sc.newAPIHadoopFile[BytesWritable, BytesWritable, EWFImageInputFormat](image)
     val blocks = rawBlocks.map(b => (b._1.copyBytes(), b._2.copyBytes)).persist(StorageLevel.MEMORY_AND_DISK_SER)
-    val hbasePrep = blocks.map(b => {
-      val keyBuf = ByteBuffer.wrap(b._1)
-      val index = keyBuf.getLong
-      val pathBuf = new Array[Byte](keyBuf.remaining())
-      keyBuf.get(pathBuf)
-      val pathname = new String(pathBuf,Charset.forName("US-ASCII"))
-      val path = new Path(pathname)
-      val gb = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(index / 1024L / 1024L / 1024L).array()
-      val md = MessageDigest.getInstance("SHA1")
-      md.update(pathname.getBytes)
-      md.update(gb)
-      (Hex.encodeHexString(md.digest),index,b._2,path,gb)
-    })
+    val hbasePrep = blocks.map(b => EWFImage.toHBasePrep(b))
     val hConf = HBaseConfiguration.create(sc.hadoopConfiguration)
     hConf.setClass("mapreduce.outputformat.class",
       classOf[TableOutputFormat[Object]], classOf[OutputFormat[Object, Writable]])
     hConf.set(TableOutputFormat.OUTPUT_TABLE, tableName)
     hConf.set("hbase.client.keyvalue.maxsize","0")
-    hbasePrep.map(b => {
-      val index = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(b._2).array()
-      val put = new Put(b._1.getBytes).add(EWFImage.familyNameDefault.getBytes,index,b._3)
-      (new ImmutableBytesWritable(b._1.getBytes),put)
-    }).saveAsNewAPIHadoopDataset(hConf)
+    hbasePrep.map(b => EWFImage.toImageColumn(b)).saveAsNewAPIHadoopDataset(hConf)
     val hConf2 = HBaseConfiguration.create(sc.hadoopConfiguration)
     hConf2.setClass("mapreduce.outputformat.class",
       classOf[TableOutputFormat[Object]], classOf[OutputFormat[Object, Writable]])
     hConf2.set(TableOutputFormat.OUTPUT_TABLE, EWFImage.rowKeyTableName)
-    hbasePrep.map(b => {
-      val put = new Put(b._4.getName.getBytes).add(EWFImage.familyNameDefault.getBytes,b._5,b._1.getBytes)
-      (new ImmutableBytesWritable(b._4.getName.getBytes),put)
-    }).saveAsNewAPIHadoopDataset(hConf2)
+    hbasePrep.map(b => EWFImage.toRowKeyTuple(b))
+      .distinct()
+      .map(b => EWFImage.toRowKeyColumn(b))
+      .saveAsNewAPIHadoopDataset(hConf2)
   }
   /* def restore {
 

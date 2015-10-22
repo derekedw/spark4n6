@@ -15,6 +15,7 @@ import org.apache.log4j.Level;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 
 /**
 * Created by Derek on 9/22/2014.
@@ -67,11 +68,13 @@ public class EWFRecordReader extends SequenceFileRecordReader<BytesWritable, Byt
         long bytesToRead = ((end - currentStart) > (getChunksPerRecord() * chunkSize)) ? (getChunksPerRecord() * chunkSize) : (end - currentStart);
         byte[] valBuf = stream.readImageBytes(currentStart, (int) bytesToRead);
         log.debug("stream.readImageBytes(" + currentStart + ", (int) " + bytesToRead + ") = " + valBuf.length + ";");
-        byte[] keyBuf = ByteBuffer.allocate(Long.SIZE + file.toUri().toASCIIString().getBytes().length)
-                .putLong(currentStart)
-                .put(file.toUri().toASCIIString().getBytes())
-                .array();
-        currentKey.set(keyBuf,0,keyBuf.length);
+        String filename = getFirstFile().toUri().toString();
+        ByteBuffer keyBuf = ByteBuffer.allocate(Long.SIZE + filename.length());
+        keyBuf.putLong(currentStart);
+        keyBuf.put(filename.getBytes());
+        keyBuf.flip();
+        log.debug("keyBuf.array() = '" + new String(keyBuf.array()) + "'");
+        currentKey.set(keyBuf.array(),0,keyBuf.array().length);
         currentValue.set(valBuf, 0, valBuf.length);
         currentEnd = currentStart + valBuf.length;
         return currentEnd <= end;
