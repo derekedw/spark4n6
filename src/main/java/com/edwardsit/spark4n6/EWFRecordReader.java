@@ -40,7 +40,7 @@ public class EWFRecordReader extends SequenceFileRecordReader<BytesWritable, Byt
     protected Path getFirstFile() {
         int length = file.getName().length();
         Path parent = file.getParent();
-	return new Path(parent,file.getName().substring(0,length-4) + ".E01");
+	    return new Path(parent,file.getName().substring(0,length-4) + ".E01");
     }
     @Override
     public void initialize(InputSplit split, TaskAttemptContext context) throws IOException, InterruptedException {
@@ -68,13 +68,14 @@ public class EWFRecordReader extends SequenceFileRecordReader<BytesWritable, Byt
         long bytesToRead = ((end - currentStart) > (getChunksPerRecord() * chunkSize)) ? (getChunksPerRecord() * chunkSize) : (end - currentStart);
         byte[] valBuf = stream.readImageBytes(currentStart, (int) bytesToRead);
         log.debug("stream.readImageBytes(" + currentStart + ", (int) " + bytesToRead + ") = " + valBuf.length + ";");
-        String filename = getFirstFile().toUri().toString();
-        ByteBuffer keyBuf = ByteBuffer.allocate(Long.SIZE + filename.length());
+        String filename = getFirstFile().toUri().toASCIIString();
+        int len = filename.getBytes().length;
+        ByteBuffer keyBuf = ByteBuffer.allocate(Long.SIZE/8 + Integer.SIZE/8 + len);
         keyBuf.putLong(currentStart);
+        keyBuf.putInt(len);
         keyBuf.put(filename.getBytes());
         keyBuf.flip();
-        log.debug("keyBuf.array() = '" + new String(keyBuf.array()) + "'");
-        currentKey.set(keyBuf.array(),0,keyBuf.array().length);
+        currentKey.set(keyBuf.array(),0,Long.SIZE/8 + Integer.SIZE/8 + len);
         currentValue.set(valBuf, 0, valBuf.length);
         currentEnd = currentStart + valBuf.length;
         return currentEnd <= end;

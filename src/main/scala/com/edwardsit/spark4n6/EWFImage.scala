@@ -87,18 +87,20 @@ object EWFImage {
   def toHBasePrep(b: Tuple2[Array[Byte], Array[Byte]]): Tuple5[String,Long,Array[Byte],Path,Array[Byte]] = {
     val keyBuf = ByteBuffer.wrap(b._1)
     val index = keyBuf.getLong
-    val pathBuf = new Array[Byte](keyBuf.remaining())
+    val len = keyBuf.getInt()
+    val pathBuf = new Array[Byte](len)
     keyBuf.get(pathBuf)
     val pathname = new String(pathBuf)
     val path = new Path(pathname)
-    val gb = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(index / 1024L / 1024L / 1024L).array()
+    val gb = ByteBuffer.allocate(java.lang.Long.SIZE/8).putLong(index / 1024L / 1024L / 1024L)
+    gb.flip()
     val md = MessageDigest.getInstance("SHA1")
     md.update(pathname.getBytes)
     md.update(gb)
-    (Hex.encodeHexString(md.digest),index,b._2,path,gb)
+    (Hex.encodeHexString(md.digest),index,b._2,path,gb.array())
   }
   def toImageColumn(b: Tuple5[String,Long,Array[Byte],Path,Array[Byte]]): Tuple2[ImmutableBytesWritable,Put] = {
-    val index = ByteBuffer.allocate(java.lang.Long.SIZE).putLong(b._2).array()
+    val index = ByteBuffer.allocate(java.lang.Long.SIZE/8).putLong(b._2).array()
     val put = new Put(b._1.getBytes).add(familyNameDefault.getBytes,index,b._3)
     (new ImmutableBytesWritable(b._1.getBytes),put)
   }
