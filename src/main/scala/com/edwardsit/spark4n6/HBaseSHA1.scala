@@ -11,10 +11,7 @@ import org.apache.spark.{SparkConf, SparkContext}
  * Created by Derek on 10/11/2015.
  */
 object HBaseSHA1 {
-  def main(args: Array[String]) {
-    val conf = new SparkConf()
-    // conf.set("spark.executor.extraClassPath","/user/hadoop/spark4n6_2.10-1.0.jar")
-    val sc = new SparkContext("yarn-client","SHA1", conf)
+  def main(args: Array[String]): Unit = {
     val img = new EWFImage(args(0))
     val sha1 = new HBaseSHA1(img)
     sha1.calculate
