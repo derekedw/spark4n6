@@ -46,7 +46,6 @@ object EWFImage {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
     // conf.set("spark.executor.extraClassPath","/user/hadoop/spark4n6_2.10-1.0.jar")
-    val sc = new SparkContext("yarn-client", "EWFImageLoad", conf)
     createTableIfNecessary
     if ("list".equals(args(0))) {
       list()
@@ -56,6 +55,7 @@ object EWFImage {
       }
     }
     else if ("load".equals(args{0})) {
+      val sc = new SparkContext("yarn-client", "EWFImageLoad", conf)
       val image = new EWFImage(args(1))
       image.load(sc)
     }
