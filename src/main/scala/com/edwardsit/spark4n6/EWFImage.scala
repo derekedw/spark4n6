@@ -125,6 +125,9 @@ class EWFImage(image: String, backupPath: Path = null, verificationHashes: Array
   def backup {
   } */
   def rowKeys: Iterator[Array[Byte]] = {
+    if (! EWFImage.rowKeyTable.contains(image)) {
+      EWFImage.list()
+    }
     val item = EWFImage.rowKeyTable(image)
     item.valuesIterator
   }
