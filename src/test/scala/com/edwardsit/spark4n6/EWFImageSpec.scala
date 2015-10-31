@@ -26,8 +26,8 @@ class EWFImageSpec  extends Specification {
     "where the path is element #4" >> {
       result._4.getName must_== "macwd.E01"
     }
-    "where the offset number in GiB is element #5" >> {
-      result._5 must_== Array[Byte](0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0c)
+    "where the offset number is element #5" >> {
+      result._5 must_== Array[Byte](0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x60)
     }
   }
   "toRowKeyTuple specification" >> {

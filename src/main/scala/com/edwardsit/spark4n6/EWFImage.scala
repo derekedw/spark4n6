@@ -97,12 +97,12 @@ object EWFImage {
     keyBuf.get(pathBuf)
     val pathname = new String(pathBuf)
     val path = new Path(pathname)
-    val gb = ByteBuffer.allocate(java.lang.Long.SIZE/8).putLong(index / 1024L / 1024L / 1024L)
-    gb.flip()
+    val blkId = ByteBuffer.allocate(java.lang.Long.SIZE/8).putLong(index / 128L / 1024L / 1024L)
+    blkId.flip()
     val md = MessageDigest.getInstance("SHA1")
     md.update(pathname.getBytes)
-    md.update(gb)
-    (Hex.encodeHexString(md.digest),index,b._2,path,gb.array())
+    md.update(blkId)
+    (Hex.encodeHexString(md.digest),index,b._2,path,blkId.array())
   }
   def toImageColumn(b: Tuple5[String,Long,Array[Byte],Path,Array[Byte]]): Tuple2[ImmutableBytesWritable,Put] = {
     val index = ByteBuffer.allocate(java.lang.Long.SIZE/8).putLong(b._2).array()
