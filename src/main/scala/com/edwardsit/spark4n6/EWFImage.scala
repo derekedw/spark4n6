@@ -4,6 +4,7 @@ import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.security.MessageDigest
+import java.util.NavigableMap
 import org.apache.commons.codec.binary.Hex
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
@@ -13,6 +14,7 @@ import org.apache.hadoop.hbase.{HColumnDescriptor, HTableDescriptor, HBaseConfig
 import org.apache.hadoop.hbase.client._
 import org.apache.hadoop.io.{Writable, BytesWritable, LongWritable}
 import org.apache.hadoop.mapreduce.{OutputFormat}
+import org.apache.log4j.{Level,Logger}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.storage.StorageLevel
 
@@ -23,20 +25,20 @@ import collection.JavaConversions._
  * Created by Derek on 10/13/2015.
  */
 object EWFImage {
+  val log = Logger.getLogger(getClass.getName)
+  log.setLevel(Level.DEBUG)
   val tableNameDefault: String = "images"
   val familyNameDefault : String = "images"
   val rowKeyTableName: String = "row-keys"
-  val rowKeyTable = new immutable.TreeMap[String,immutable.TreeMap[Array[Byte],Array[Byte]]]
+  var rowKeyTable = new immutable.TreeMap[String,NavigableMap[Array[Byte],Array[Byte]]]
   def list(tableName: String = EWFImage.rowKeyTableName, familyName : String = EWFImage.familyNameDefault) {
     val conf = HBaseConfiguration.create()
-    // Initialize hBase table if necessary
     val connection = HConnectionManager.createConnection(new Configuration)
     val table = connection.getTable(tableName.getBytes)
     val scan = new Scan()
-    scan.addFamily(familyName.getBytes)
     val rs = table.getScanner(scan)
     for (r <- rs) {
-      rowKeyTable + (new String(r.getRow) -> r.getFamilyMap(familyName.getBytes))
+      rowKeyTable = rowKeyTable + (new String(r.getRow) -> r.getFamilyMap(familyName.getBytes))
     }
     if (rs != null)
       rs.close()
@@ -45,7 +47,6 @@ object EWFImage {
   }
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
-    // conf.set("spark.executor.extraClassPath","/user/hadoop/spark4n6_2.10-1.0.jar")
     createTableIfNecessary
     if ("list".equals(args(0))) {
       list()
