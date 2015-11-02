@@ -31,21 +31,25 @@ class HBaseSHA1 (img: EWFImage) {
   }
   def calculate() {
     val it = img.rowKeys
+    val (it1, it2) = it.duplicate
+    val imgSize = it1.size
     val conf = HBaseConfiguration.create()
     // Initialize hBase table if necessary
     val connection = HConnectionManager.createConnection(new Configuration)
     val table = connection.getTable(EWFImage.tableNameDefault.getBytes)
     var bytesRead = 0L
-    for (row <- it) {
+    var i = 0L
+    for (row <- it2) {
       val scan = new Scan(row,row)
       val rs = table.getScanner(scan)
       for (result <- rs) {
         for (col <- result.getFamilyMap(EWFImage.familyNameDefault.getBytes)) {
           md.update(col._2)
           bytesRead += col._2.length
-          log.info(bytesRead + " bytes read")
         }
       }
+      i = i + 1
+      log.info(f"${bytesRead.toFloat / 1024.0 / 1024.0 / 1024.0}%,5.2f GiB read, ${i.toFloat * 100.0 / imgSize.toFloat}%3.2f%% complete")
       if (rs != null)
         rs.close()
     }
