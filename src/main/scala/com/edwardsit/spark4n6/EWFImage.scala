@@ -1,5 +1,6 @@
 package com.edwardsit.spark4n6
 
+import java.io.IOException
 import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
@@ -136,10 +137,82 @@ class EWFImage(image: String, backupPath: Path = null, verificationHashes: Array
     val item = EWFImage.rowKeyTable(image)
     item.valuesIterator
   }
+  def span(start: Long = 0L, end: Long = Long.MaxValue): Iterator[Array[Byte]] = {
+    val conf = HBaseConfiguration.create()
+    // Initialize hBase table if necessary
+    val connection = HConnectionManager.createConnection(new Configuration)
+    val table = connection.getTable(EWFImage.tableNameDefault.getBytes)
+    var atStart: Boolean = false
+    val it = new Iterator[Array[Byte]] {
+      val rowIt = rowKeys
+      var row: Array[Byte]
+      var resultIt : Iterator[Result]
+      var colIt: Iterator[Tuple2[Array[Byte],Array[Byte]]]
+      var col: Tuple2[Array[Byte],Array[Byte]]
+      var offset: Long
+      while (rowIt.hasNext) {
+        row = rowIt.next()
+        val scan = new Scan(row,row)
+        val rs = table.getScanner(scan)
+        resultIt = rs.iterator()
+        while (resultIt.hasNext) {
+          val result = resultIt.next()
+          colIt = result.getFamilyMap(EWFImage.familyNameDefault.getBytes).iterator
+          while (colIt.hasNext) {
+            col = colIt.next()
+            offset = ByteBuffer.wrap(col._1).getLong
+            if (start >= offset && start < (offset + col._2.length))
+              atStart = true
+              return
+          }
+        }
+      }
+      override def hasNext: Boolean = {
+        if (atStart)
+          return true
+        else
+          return colIt.hasNext || resultIt.hasNext || rowIt.hasNext
+      }
+      override def next(): Array[Byte] = {
+        if (atStart) {
+          if (end >= offset && end < (offset + col._2.length))
+            return col._2.slice((start - offset).toInt,(start - end).toInt)
+          else
+            return col._2.slice((start - offset).toInt,col._2.length)
+        } else {
+          if (colIt.hasNext)
+            return colIt.next()._2
+          else {
+            if (resultIt.hasNext) {
+              val result = resultIt.next()
+              if (colIt.hasNext)
+                return colIt.next()._2
+              else
+                throw new IOException()
+            } else {
+              if (rowIt.hasNext) {
+                row = rowIt.next()
+                if (resultIt.hasNext) {
+                  val result = resultIt.next()
+                  if (colIt.hasNext)
+                    return colIt.next()._2
+                  else
+                    throw new IOException()
+                }
+              } else
+                throw new IOException()
+            }
+          }
+        }
+        return new Array[Byte](0)
+      }
+    }
+    it
+  }
   def load(sc: SparkContext, tableName: String = EWFImage.tableNameDefault, familyName : String = EWFImage.familyNameDefault): Unit = {
     // delegate image reading and parsing to concrete image class
     val rawBlocks = sc.newAPIHadoopFile[BytesWritable, BytesWritable, EWFImageInputFormat](image)
-    val blocks = rawBlocks.map(b => (b._1.copyBytes(), b._2.copyBytes)).persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val blocks = rawBlocks.map(b => (b._1.copyBytes(), b._2.copyBytes))
     val hbasePrep = blocks.map(b => EWFImage.toHBasePrep(b))
     val hConf = HBaseConfiguration.create(sc.hadoopConfiguration)
     hConf.setClass("mapreduce.outputformat.class",

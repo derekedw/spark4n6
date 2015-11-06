@@ -49,7 +49,8 @@ class HBaseSHA1 (img: EWFImage) {
         }
       }
       i = i + 1
-      log.info(f"${bytesRead.toFloat / 1024.0 / 1024.0 / 1024.0}%,5.2f GiB read, ${i.toFloat * 100.0 / imgSize.toFloat}%3.2f%% complete")
+      log.info(f"${bytesRead.toFloat / 1024.0 / 1024.0 / 1024.0}%,5.2f GiB read, " +
+        "${i.toFloat * 100.0 / imgSize.toFloat}%3.2f%% complete")
       if (rs != null)
         rs.close()
     }
