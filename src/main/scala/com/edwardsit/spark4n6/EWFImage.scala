@@ -139,7 +139,7 @@ class EWFImage(image: String, backupPath: Path = null, verificationHashes: Array
   def load(sc: SparkContext, tableName: String = EWFImage.tableNameDefault, familyName : String = EWFImage.familyNameDefault): Unit = {
     // delegate image reading and parsing to concrete image class
     val rawBlocks = sc.newAPIHadoopFile[BytesWritable, BytesWritable, EWFImageInputFormat](image)
-    val blocks = rawBlocks.map(b => (b._1.copyBytes(), b._2.copyBytes))
+    val blocks = rawBlocks.map(b => (b._1.copyBytes(), b._2.copyBytes)).persist(StorageLevel.MEMORY_AND_DISK)
     val hbasePrep = blocks.map(b => EWFImage.toHBasePrep(b))
     val hConf = HBaseConfiguration.create(sc.hadoopConfiguration)
     hConf.setClass("mapreduce.outputformat.class",
