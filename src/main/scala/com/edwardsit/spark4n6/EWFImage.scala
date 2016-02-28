@@ -118,7 +118,8 @@ object EWFImage {
   }
 }
 
-class EWFImage(image: String, backupPath: Path = null, verificationHashes: Array[Array[Byte]] = null, metadata: URI = null) {
+class EWFImage(_image: String, backupPath: Path = null, verificationHashes: Array[Array[Byte]] = null, metadata: URI = null) {
+  val name = _image
   /* def verify() {
     if (verificationHashes == null) {
      throw new IllegalArgumentException ("No verification hashes specified");
@@ -130,15 +131,15 @@ class EWFImage(image: String, backupPath: Path = null, verificationHashes: Array
   def backup {
   } */
   def rowKeys: Iterator[Array[Byte]] = {
-    if (! EWFImage.rowKeyTable.contains(image)) {
+    if (! EWFImage.rowKeyTable.contains(name)) {
       EWFImage.list()
     }
-    val item = EWFImage.rowKeyTable(image)
+    val item = EWFImage.rowKeyTable(name)
     item.valuesIterator
   }
   def load(sc: SparkContext, tableName: String = EWFImage.tableNameDefault, familyName : String = EWFImage.familyNameDefault): Unit = {
     // delegate image reading and parsing to concrete image class
-    val rawBlocks = sc.newAPIHadoopFile[BytesWritable, BytesWritable, EWFImageInputFormat](image)
+    val rawBlocks = sc.newAPIHadoopFile[BytesWritable, BytesWritable, EWFImageInputFormat](name)
     val blocks = rawBlocks.map(b => (b._1.copyBytes(), b._2.copyBytes)).persist(StorageLevel.MEMORY_AND_DISK)
     val hbasePrep = blocks.map(b => EWFImage.toHBasePrep(b))
     val hConf = HBaseConfiguration.create(sc.hadoopConfiguration)
