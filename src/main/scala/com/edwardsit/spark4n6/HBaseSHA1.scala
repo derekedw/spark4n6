@@ -7,6 +7,7 @@ import org.apache.hadoop.hbase.client._
 import org.apache.hadoop.hbase.{HColumnDescriptor, HBaseConfiguration, HTableDescriptor}
 import org.apache.log4j.Logger
 import org.apache.spark.{SparkConf, SparkContext}
+import java.io._
 
 /**
  * Created by Derek on 10/11/2015.
@@ -21,6 +22,7 @@ object HBaseSHA1 {
 }
 
 class HBaseSHA1 (img: EWFImage) {
+  // val output = new FileOutputStream(new File("/mnt",img.image + ".dd"), true);
   val log = Logger.getLogger(getClass.getName)
   val md = java.security.MessageDigest.getInstance("SHA1")
   var calculated = false
@@ -41,16 +43,18 @@ class HBaseSHA1 (img: EWFImage) {
     var i = 0L
     for (row <- it2) {
       val scan = new Scan(row,row)
+      // scan.setBatch(50)
       val rs = table.getScanner(scan)
       for (result <- rs) {
         for (col <- result.getFamilyMap(EWFImage.familyNameDefault.getBytes)) {
           md.update(col._2)
+	  // output.write(col._2)
           bytesRead += col._2.length
         }
       }
       i = i + 1
       log.info(f"${bytesRead.toFloat / 1024.0 / 1024.0 / 1024.0}%,5.2f GiB read, " +
-        "${i.toFloat * 100.0 / imgSize.toFloat}%3.2f%% complete")
+        f"${i.toFloat * 100.0 / imgSize.toFloat}%3.2f%% complete")
       if (rs != null)
         rs.close()
     }
