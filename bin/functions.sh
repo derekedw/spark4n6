@@ -18,7 +18,7 @@ function run_test() {
         { time spark-submit --class com.edwardsit.spark4n6.EWFImage \
             --num-executors $(( $1 * $2 )) \
             --executor-memory "$(( $3 ))g" \
-            ~/${PROJECT_NAME}/target/scala-2.10/spark4n6_2.10-1.0.jar load 500GB-CDrive.E01
+            ~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar load 500GB-CDrive.E01
         } 2>&1 | tee -a $logfile
 	{ time java com.edwardsit.spark4n6.HBaseSHA1 500GB-CDrive.E01 500GB-CDrive.E01.dd 
 	} 2>&1 | tee -a $logfile
@@ -26,7 +26,7 @@ function run_test() {
 	{ time spark-submit \
 		--num-executors $(( $1 * $2 )) --executor-memory "$(( $3 ))g" \
 		--class com.edwardsit.spark4n6.Strings \
-		~/${PROJECT_NAME}/target/scala-2.10/spark4n6_2.10-1.0.jar >/dev/null
+		~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar >/dev/null
 	} 2>&1 | tee -a $logfile
 	sleep 180
 	{ time strings /mnt/500GB-CDrive.E01.dd >/dev/null
@@ -39,4 +39,8 @@ function run_test() {
 	} 2>&1 | tee -a $logfile
     fi
 }
+
+export PATH=${PATH}:~/activator-dist-1.3.7
+export EXTRA_CLASSPATH=~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar
+export CLASSPATH=$(hbase classpath):~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar
 
