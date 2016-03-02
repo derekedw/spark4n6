@@ -21,16 +21,16 @@ function run_test() {
             ~/${PROJECT_NAME}/target/scala-2.10/spark4n6_2.10-1.0.jar load 500GB-CDrive.E01
         } 2>&1 | tee -a $logfile
 	{ time spark-submit \
-		--num-executors 24 --executor-memory 8g \
+		--num-executors $(( $1 * $2 )) --executor-memory "$(( $3 ))g" \
 		--class com.edwardsit.spark4n6.Strings \
 		~/${PROJECT_NAME}/target/scala-2.10/spark4n6_2.10-1.0.jar >/dev/null
-	} 2>&1 | tee -a test.log
+	} 2>&1 | tee -a $logfile
 	{ time strings /mnt/500GB-CDrive.E01.dd >/dev/null
-	} 2>&1 | tee -a test.log
+	} 2>&1 | tee -a $logfile
 	{ time java com.edwardsit.spark4n6.HBaseSHA1 500GB-CDrive.E01 
-	} 2>&1 | tee -a test.log
+	} 2>&1 | tee -a $logfile
 	{ time sha1sum /mnt/500GB-CDrive.E01.dd
-	} 2>&1 | tee -a test.log
+	} 2>&1 | tee -a $logfile
     fi
 }
 
