@@ -15,14 +15,23 @@ import java.io._
 object HBaseSHA1 {
   def main(args: Array[String]): Unit = {
     val img = new EWFImage(args(0))
-    val sha1 = new HBaseSHA1(img)
+    val output = {
+      try {
+        val f = new File("/mnt",args(1))
+        if (f.exists()) throw new IOException("File exists!")
+      } catch {
+        case e: ArrayIndexOutOfBoundsException => None
+        case e: IOException => System.exit(1)
+      }
+      Some(new FileOutputStream(new File("/mnt",args(1))))
+    }
+    val sha1 = new HBaseSHA1(img,output)
     sha1.calculate
     println(args(0) + " = " + sha1.toHexString)
   }
 }
 
-class HBaseSHA1 (img: EWFImage) {
-  // val output = new FileOutputStream(new File("/mnt",img.image + ".dd"), true);
+class HBaseSHA1 (img: EWFImage, output: Option[FileOutputStream]) {
   val log = Logger.getLogger(getClass.getName)
   val md = java.security.MessageDigest.getInstance("SHA1")
   var calculated = false
@@ -43,12 +52,14 @@ class HBaseSHA1 (img: EWFImage) {
     var i = 0L
     for (row <- it2) {
       val scan = new Scan(row,row)
-      // scan.setBatch(50)
+      if (output.isDefined)
+        scan.setBatch(100)
       val rs = table.getScanner(scan)
       for (result <- rs) {
         for (col <- result.getFamilyMap(EWFImage.familyNameDefault.getBytes)) {
           md.update(col._2)
-	  // output.write(col._2)
+          // if output is defined, write to the output file
+          output.foreach(_.write(col._2))
           bytesRead += col._2.length
         }
       }
