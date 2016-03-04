@@ -1,0 +1,34 @@
+   =========================================================================
+   ==  Example NOTICE file for use with the Apache License, Version 2.0,  ==
+   ==  in this case for the Apache httpd-2.0 distribution.                ==
+   =========================================================================
+
+   Spark4n6
+   Digital Forensics and Incident Response tools based on Apache Spark(TM)
+   and other Apache Hadoop(TM) ecosystem projects
+   Copyright 2015-2016 by Derek Edwards
+
+   This product includes software developed at
+   The Apache Software Foundation (http://www.apache.org/).
+
+   This product includes software from the jlibewf utility for reading Encase
+   EWF 1.0 formatted volumes, modified to work with the Hadoop Distributed
+   File System (HDFS). jlibewf was released into the public domain as noted
+   below:
+
+       The software provided here is released by the Naval Postgraduate
+       School, an agency of the U.S. Department of Navy.  The software
+       bears no warranty, either expressed or implied. NPS does not assume
+       legal liability nor responsibility for a User's use of the software
+       or the results of such use.
+
+       Please note that within the United States, copyright protection,
+       under Section 105 of the United States Code, Title 17, is not
+       available for any work of the United States Government and/or for
+       any works created by United States Government employees. User
+       acknowledges that this software contains work which was created by
+       NPS government employees and is therefore in the public domain and
+       not subject to copyright.
+
+       Released into the public domain on December 17, 2010 by Bruce Allen.
+
