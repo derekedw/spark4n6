@@ -1,4 +1,5 @@
 
+@echo off
 aws configure
 aws s3api list-buckets --output text | find "BUCKETS"
 set /p bucket=S3 bucket name:
@@ -32,4 +33,6 @@ aws emr create-cluster ^
        Name="Configure daemons",Args=["--namenode-opts=-XX:GCTimeRatio=19"],Path=s3://elasticmapreduce/bootstrap-actions/configure-daemons ^
        Name="Patch the cluster's software and OS",Path=s3://spark4n6-public/bootstrap-actions/patchall.sh ^
        Name="Initialize the cluster",Path=s3://elasticmapreduce/bootstrap-actions/run-if,Args=["instance.isMaster=true",s3://spark4n6-public/bootstrap-actions/start.sh]
-
+@echo aws emr terminate-clusters --cluster-ids j-2WFXXXXXXX6ID
+@echo
+@echo Costs will accrue until this cluster is terminated.  Use the command above to terminate, or use the AWS console.
