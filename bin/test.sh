@@ -2,13 +2,16 @@
 
 set +x
 	. ~/spark4n6/bin/functions.sh
-	testImage=$1
-	bucket=$(echo ${testImage} | sed -e 's/^\(s3n:\/\/[-.0-9a-z][-.0-9a-z]*\).*$/\1/')
-	testImagePath=$(echo ${testImage} | sed -e 's/s3n:\/\/[-.0-9a-z][-.0-9a-z]*//')
+	aws s3api list-buckets --output text | grep "BUCKETS"
+	printf '%s' 'Bucket name: '
+	read bucket
+	aws s3 ls s3://${bucket} --recursive | grep ".E01" | grep -v ".txt"
+	printf '%s' 'Path to test image: '
+	read testImagePath
 	testImageDir=$(dirname ${testImagePath})
 	testImageBase=$(basename ${testImagePath} | sed -e 's/\.E01//')
 	hadoop distcp \
-        ${bucket}${testImageDir}/${testImageBase}.E* \
+        s3n://${bucket}/${testImageDir}/${testImageBase}.E* \
         /user/hadoop
 	while [ ! -d ~/spark4n6/ ]; do sleep 10; done
 	while [ ! -f ~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar ]; do sleep 10; done
