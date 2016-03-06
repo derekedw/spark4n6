@@ -32,14 +32,14 @@ object HBaseSHA1 {
   def main(args: Array[String]): Unit = {
     val img = new EWFImage(args(0))
     val output = {
-      val f = new File("/mnt",args(1))
       try {
+        val f = new File("/mnt",args(1))
         if (f.exists()) throw new IOException("File exists!")
+        Some(new FileOutputStream(f))
       } catch {
         case e: ArrayIndexOutOfBoundsException => None
-        case e: IOException => System.exit(1)
+        case e: IOException => System.exit(1); None
       }
-      Some(new FileOutputStream(f))
     }
     val sha1 = new HBaseSHA1(img,output)
     sha1.calculate
