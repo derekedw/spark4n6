@@ -13,14 +13,15 @@ function run_test() {
     # $1 is the number of hosts in the cluster
     # $2 is the number of executors per host
     # $3 is the number of GB of RAM per executor
+    # $4 is the test image path
     if (( $1 > 0 && $2 > 0 && $3 > 0 )); then
         logfile="run$(( $1 * $2 ))x-$(( $3 ))gb.log"
         { time spark-submit --class com.edwardsit.spark4n6.EWFImage \
             --num-executors $(( $1 * $2 )) \
             --executor-memory "$(( $3 ))g" \
-            ~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar load 500GB-CDrive.E01
+            ~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar load $4
         } 2>&1 | tee -a $logfile
-	{ time java com.edwardsit.spark4n6.HBaseSHA1 500GB-CDrive.E01 500GB-CDrive.E01.dd 
+	{ time java com.edwardsit.spark4n6.HBaseSHA1 $4 $4.dd
 	} 2>&1 | tee -a $logfile
 	sleep 180
 	{ time spark-submit \
@@ -29,13 +30,13 @@ function run_test() {
 		~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar >/dev/null
 	} 2>&1 | tee -a $logfile
 	sleep 180
-	{ time strings /mnt/500GB-CDrive.E01.dd >/dev/null
+	{ time strings /mnt/$4.dd >/dev/null
 	} 2>&1 | tee -a $logfile
 	sleep 180
-	{ time java com.edwardsit.spark4n6.HBaseSHA1 500GB-CDrive.E01 
+	{ time java com.edwardsit.spark4n6.HBaseSHA1 $4
 	} 2>&1 | tee -a $logfile
 	sleep 180
-	{ time sha1sum /mnt/500GB-CDrive.E01.dd
+	{ time sha1sum /mnt/$4.dd
 	} 2>&1 | tee -a $logfile
     fi
 }
