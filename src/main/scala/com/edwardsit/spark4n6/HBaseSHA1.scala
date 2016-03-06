@@ -32,14 +32,14 @@ object HBaseSHA1 {
   def main(args: Array[String]): Unit = {
     val img = new EWFImage(args(0))
     val output = {
+      val f = new File("/mnt",args(1))
       try {
-        val f = new File("/mnt",args(1))
         if (f.exists()) throw new IOException("File exists!")
       } catch {
         case e: ArrayIndexOutOfBoundsException => None
         case e: IOException => System.exit(1)
       }
-      Some(new FileOutputStream(new File("/mnt",args(1))))
+      Some(new FileOutputStream(f))
     }
     val sha1 = new HBaseSHA1(img,output)
     sha1.calculate
@@ -69,7 +69,7 @@ class HBaseSHA1 (img: EWFImage, output: Option[FileOutputStream]) {
     for (row <- it2) {
       val scan = new Scan(row,row)
       if (output.isDefined)
-        scan.setBatch(100)
+        scan.setBatch(1024)
       val rs = table.getScanner(scan)
       for (result <- rs) {
         for (col <- result.getFamilyMap(EWFImage.familyNameDefault.getBytes)) {
