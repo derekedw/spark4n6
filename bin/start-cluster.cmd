@@ -20,12 +20,10 @@ aws emr create-cluster ^
    --ec2-attributes KeyName=%keyPairName%,InstanceProfile=EMR_EC2_DefaultRole,SubnetId=%subnet% ^
    --log-uri s3://%bucket%/%logPath% ^
    --applications ^
-           Name=HADOOP ^
            Name=PIG ^
            Name=HUE ^
            Name=SPARK ^
            Name=HBASE ^
-           Name=GANGLIA ^
    --bootstrap-actions ^
        Name="Install Ganglia",Path=s3://elasticmapreduce/bootstrap-actions/install-ganglia ^
        Name="Install Spark",Path=file:///usr/share/aws/emr/install-spark/install-spark ^
