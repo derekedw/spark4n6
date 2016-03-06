@@ -65,6 +65,7 @@ class HBaseSHA1 (img: EWFImage, output: Option[FileOutputStream]) {
     val connection = HConnectionManager.createConnection(new Configuration)
     val table = connection.getTable(EWFImage.tableNameDefault.getBytes)
     var bytesRead = 0L
+    var bytesWritten = 0L
     var i = 0L
     for (row <- it2) {
       val scan = new Scan(row,row)
@@ -75,13 +76,18 @@ class HBaseSHA1 (img: EWFImage, output: Option[FileOutputStream]) {
         for (col <- result.getFamilyMap(EWFImage.familyNameDefault.getBytes)) {
           md.update(col._2)
           // if output is defined, write to the output file
-          output.foreach(_.write(col._2))
+          output.foreach({
+            bytesWritten += col._2.length
+            _.write(col._2)
+          })
           bytesRead += col._2.length
         }
       }
       i = i + 1
       log.info(f"${bytesRead.toFloat / 1024.0 / 1024.0 / 1024.0}%,5.2f GiB read, " +
         f"${i.toFloat * 100.0 / imgSize.toFloat}%3.2f%% complete")
+      if (output.isDefined)
+        log.info(f"${bytesWritten.toFloat / 1024.0 / 1024.0 / 1024.0}%,5.2f GiB written")
       if (rs != null)
         rs.close()
     }
