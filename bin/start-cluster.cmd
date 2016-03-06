@@ -2,8 +2,8 @@
 aws configure
 aws s3api list-buckets --output text | find "BUCKETS"
 set /p bucket=S3 bucket name:
-aws s3 ls s3://%bucket% --recursive | find ".E01" | find /v ".txt"
-set /p testImagePath=Path to test image:
+:: aws s3 ls s3://%bucket% --recursive | find ".E01" | find /v ".txt"
+:: set /p testImagePath=Path to test image:
 set /p logPath=Path to log files in the bucket:
 aws ec2 describe-key-pairs --output text
 set /p keyPairName=EC2 SSH key pair name:
@@ -30,5 +30,5 @@ aws emr create-cluster ^
        Name="Install HBase",Path=s3://elasticmapreduce/bootstrap-actions/setup-hbase ^
        Name="Configure Hadoop",Args=["--hdfs-key-value","io.file.buffer.size=65536"],Path=s3://elasticmapreduce/bootstrap-actions/configure-hadoop ^
        Name="Configure daemons",Args=["--namenode-opts=-XX:GCTimeRatio=19"],Path=s3://elasticmapreduce/bootstrap-actions/configure-daemons ^
-       Name="Initialize the cluster",Path=s3://elasticmapreduce/bootstrap-actions/run-if,Args=["instance.isMaster=true",s3://spark4n6-public/bootstrap-actions/start.sh,s3n://%bucket%/%testImagePath%]
+       Name="Initialize the cluster",Path=s3://elasticmapreduce/bootstrap-actions/run-if,Args=["instance.isMaster=true",s3://spark4n6-public/bootstrap-actions/start.sh]
 
