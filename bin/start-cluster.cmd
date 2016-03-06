@@ -30,5 +30,6 @@ aws emr create-cluster ^
        Name="Install HBase",Path=s3://elasticmapreduce/bootstrap-actions/setup-hbase ^
        Name="Configure Hadoop",Args=["--hdfs-key-value","io.file.buffer.size=65536"],Path=s3://elasticmapreduce/bootstrap-actions/configure-hadoop ^
        Name="Configure daemons",Args=["--namenode-opts=-XX:GCTimeRatio=19"],Path=s3://elasticmapreduce/bootstrap-actions/configure-daemons ^
+       Name="Patch the cluster's software and OS",Path=s3://spark4n6-public/bootstrap-actions/patchall.sh ^
        Name="Initialize the cluster",Path=s3://elasticmapreduce/bootstrap-actions/run-if,Args=["instance.isMaster=true",s3://spark4n6-public/bootstrap-actions/start.sh]
 
