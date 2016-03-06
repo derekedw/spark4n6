@@ -21,23 +21,29 @@ function run_test() {
             --executor-memory "$(( $3 ))g" \
             ~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar load $4
         } 2>&1 | tee -a $logfile
+        echo EWFImage.load | tee -a $logfile
 	{ time java com.edwardsit.spark4n6.HBaseSHA1 $4 $4.dd
 	} 2>&1 | tee -a $logfile
+        echo HBaseSHA1.dd | tee -a $logfile
 	sleep 180
 	{ time spark-submit \
 		--num-executors $(( $1 * $2 )) --executor-memory "$(( $3 ))g" \
 		--class com.edwardsit.spark4n6.Strings \
 		~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar >/dev/null
 	} 2>&1 | tee -a $logfile
+        echo spark4n6.strings | tee -a $logfile
 	sleep 180
 	{ time strings /mnt/$4.dd >/dev/null
 	} 2>&1 | tee -a $logfile
+        echo strings.strings | tee -a $logfile
 	sleep 180
 	{ time java com.edwardsit.spark4n6.HBaseSHA1 $4
 	} 2>&1 | tee -a $logfile
+        echo HBaseSHA1.hash | tee -a $logfile
 	sleep 180
 	{ time sha1sum /mnt/$4.dd
 	} 2>&1 | tee -a $logfile
+        echo sha1sum.hash | tee -a $logfile
     fi
 }
 
