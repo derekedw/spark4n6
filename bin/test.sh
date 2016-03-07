@@ -10,6 +10,11 @@ set +x
 	read testImagePath
 	testImageDir=$(dirname ${testImagePath})
 	testImageBase=$(basename ${testImagePath} | sed -e 's/\.E01//')
+	if hadoop fs -test -d /user/hadoop; then
+		echo /user/hadoop is a directory
+	else
+		hadoop fs -mkdir /user/hadoop
+	fi
 	hadoop distcp \
 		s3n://${bucket}/${testImageDir}/${testImageBase}.E* \
 		/user/hadoop
