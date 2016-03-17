@@ -1,3 +1,19 @@
+/*
+ * Copyright 2015-2016 Derek Edwards
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.edwardsit.spark4n6
 
 import collection.JavaConversions._
@@ -19,11 +35,11 @@ object HBaseSHA1 {
       try {
         val f = new File("/mnt",args(1))
         if (f.exists()) throw new IOException("File exists!")
+        Some(new FileOutputStream(f))
       } catch {
         case e: ArrayIndexOutOfBoundsException => None
-        case e: IOException => System.exit(1)
+        case e: IOException => System.exit(1); None
       }
-      Some(new FileOutputStream(new File("/mnt",args(1))))
     }
     val sha1 = new HBaseSHA1(img,output)
     sha1.calculate
@@ -49,23 +65,29 @@ class HBaseSHA1 (img: EWFImage, output: Option[FileOutputStream]) {
     val connection = HConnectionManager.createConnection(new Configuration)
     val table = connection.getTable(EWFImage.tableNameDefault.getBytes)
     var bytesRead = 0L
+    var bytesWritten = 0L
     var i = 0L
     for (row <- it2) {
       val scan = new Scan(row,row)
       if (output.isDefined)
-        scan.setBatch(100)
+        scan.setBatch(1024)
       val rs = table.getScanner(scan)
       for (result <- rs) {
         for (col <- result.getFamilyMap(EWFImage.familyNameDefault.getBytes)) {
           md.update(col._2)
           // if output is defined, write to the output file
-          output.foreach(_.write(col._2))
+          output.foreach({
+            bytesWritten += col._2.length
+            _.write(col._2)
+          })
           bytesRead += col._2.length
         }
       }
       i = i + 1
       log.info(f"${bytesRead.toFloat / 1024.0 / 1024.0 / 1024.0}%,5.2f GiB read, " +
         f"${i.toFloat * 100.0 / imgSize.toFloat}%3.2f%% complete")
+      if (output.isDefined)
+        log.info(f"${bytesWritten.toFloat / 1024.0 / 1024.0 / 1024.0}%,5.2f GiB written")
       if (rs != null)
         rs.close()
     }
