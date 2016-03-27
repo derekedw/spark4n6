@@ -19,7 +19,7 @@ function run_test() {
         { time spark-submit --class com.edwardsit.spark4n6.EWFImage \
             --num-executors $(( $1 * $2 )) \
             --executor-memory "$(( $3 ))g" \
-            ~/spark4n6/target/scala-2.11/spark4n6_2.11-1.0.jar load $4
+            ~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar load $4
         } 2>&1 | tee -a $logfile
         echo EWFImage.load | tee -a $logfile
 	{ time java com.edwardsit.spark4n6.HBaseSHA1 $4 $4.dd
@@ -29,7 +29,7 @@ function run_test() {
 	{ time spark-submit \
 		--num-executors $(( $1 * $2 )) --executor-memory "$(( $3 ))g" \
 		--class com.edwardsit.spark4n6.Strings \
-		~/spark4n6/target/scala-2.11/spark4n6_2.11-1.0.jar >/dev/null
+		~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar >/dev/null
 	} 2>&1 | tee -a $logfile
         echo spark4n6.strings | tee -a $logfile
 	sleep 180
@@ -48,6 +48,6 @@ function run_test() {
 }
 
 export PATH=${PATH}:~/activator-dist-1.3.7
-export EXTRA_CLASSPATH=~/spark4n6/target/scala-2.11/spark4n6_2.11-1.0.jar
-export CLASSPATH=$(hbase classpath):~/spark4n6/target/scala-2.11/spark4n6_2.11-1.0.jar
+export EXTRA_CLASSPATH=~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar
+export CLASSPATH=$(hbase classpath):~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar
 

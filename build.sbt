@@ -2,7 +2,7 @@ name := """spark4n6"""
 
 version := "1.0"
 
-scalaVersion := "2.11.2"
+scalaVersion := "2.10.6"
 
 libraryDependencies ++= Seq(
   // Amazon EMR 3.11.0 has HBase

@@ -19,7 +19,7 @@ set +x
 		s3n://${bucket}/${testImageDir}/${testImageBase}.E* \
 		/user/hadoop
 	while [ ! -d ~/spark4n6/ ]; do sleep 10; done
-	while [ ! -f ~/spark4n6/target/scala-2.11/spark4n6_2.11-1.0.jar ]; do sleep 10; done
+	while [ ! -f ~/spark4n6/target/scala-2.10/spark4n6_2.10-1.0.jar ]; do sleep 10; done
 
 	while true; do
 		# Increment for the number of executors per host
