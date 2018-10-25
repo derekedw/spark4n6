@@ -21,8 +21,8 @@ aws emr create-cluster \
    --name "Spark4n6 Cluster" \
    --ami-version 3.11.0 \
    --instance-groups \
-       Name="Spark4n6Master",InstanceCount=1,InstanceGroupType=MASTER,BidPrice=${spotBidPrice},InstanceType=m1.xlarge \
-       Name="Spark4n6 Core",InstanceCount=15,InstanceGroupType=CORE,BidPrice=${spotBidPrice},InstanceType=m3.xlarge \
+       Name="Spark4n6Master",InstanceCount=1,InstanceGroupType=MASTER,BidPrice=${spotBidPrice},InstanceType=d2.xlarge \
+       Name="Spark4n6 Core",InstanceCount=15,InstanceGroupType=CORE,BidPrice=${spotBidPrice},InstanceType=r3.xlarge \
    --service-role EMR_DefaultRole \
    --ec2-attributes KeyName=${keyPairName},InstanceProfile=EMR_EC2_DefaultRole,SubnetId=${subnet} \
    --log-uri s3://${bucket}/${logPath} \
